@@ -1,0 +1,188 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using RaceIT.ProjectManager.Data
+@using RaceIT.ProjectManager.Domain
+@using RaceIT.ProjectManager.Services
+@implements IAsyncDisposable
+@inject IDbContextFactory<ProjectManagerDbContext> DbFactory
+@inject MilestoneService Service
+@inject IJSRuntime JS
+@inject ILogger<MilestonePanel> Logger
+
+<section class="panel activity-list">
+<header class="page-header"><div><h2>Milestones</h2><p class="muted">Entregas importantes del proyecto seleccionado.</p></div><button type="button" disabled="@(busy || ProjectId == 0)" @onclick="New">Nuevo milestone</button></header>
+@if (message is not null) { <p class="notice" role="status">@message</p> }
+@if (ProjectId == 0) { <p class="muted">Selecciona un proyecto para administrar sus milestones.</p> }
+else if (milestones.Count == 0) { <p class="muted">Todavía no hay milestones. Define una entrega y las actividades necesarias para alcanzarla.</p> }
+else
+{
+<div class="table-scroll"><table><thead><tr><th>Milestone</th><th>Objetivo</th><th>Estimado</th><th>Cumplimiento real</th><th>Requisitos</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+@foreach (var item in milestones)
+{
+    var complete = item.Requirements.Count(x => x.Activity.Status == ActivityStatus.Completed);
+    <tr><td><strong>@item.Name</strong><div class="muted">@string.Join(", ", item.Requirements.Select(x => x.Activity.Project.Name + " · " + x.Activity.Name))</div>
+    @if (item.ActualDate.HasValue) { <div class="muted">Confirmó: @item.Requirements.FirstOrDefault()?.ApprovedBy?.Name</div> }</td>
+    <td>@item.TargetDate.ToString("dd/MM/yyyy")</td><td>@item.EstimatedDate.ToString("dd/MM/yyyy")</td><td>@(item.ActualDate?.ToString("dd/MM/yyyy") ?? "—")</td><td>@complete / @item.Requirements.Count</td><td>@Status(item)</td>
+    <td><div class="form-actions milestone-actions">
+    @if (item.ActualDate.HasValue)
+    { <button type="button" class="secondary" disabled="@busy" @onclick="() => Reopen(item.Id)">Reabrir</button> }
+    else
+    {
+        <button type="button" class="secondary" disabled="@busy" @onclick="() => Edit(item)">Editar</button>
+        <button type="button" disabled="@(busy || complete != item.Requirements.Count || complete == 0 || item.Requirements.Any(x => blockedActivities.Contains(x.ActivityId)))" @onclick="() => Confirm(item)">Confirmar</button>
+    }
+    </div></td></tr>
+}
+</tbody></table></div>
+}
+</section>
+
+@if (mode is not null)
+{
+<dialog @ref="dialog" class="activity-modal milestone-modal" aria-labelledby="milestone-title">
+<header class="page-header"><h1 id="milestone-title">@(mode == "confirm" ? "Confirmar milestone" : editedId.HasValue ? "Editar milestone" : "Nuevo milestone")</h1><button type="button" aria-label="Cerrar milestone" @onclick="Cancel" disabled="@busy">✕</button></header>
+@if (modalMessage is not null) { <p class="notice" role="alert">@modalMessage</p> }
+@if (mode == "confirm")
+{
+    <h2>@milestones.FirstOrDefault(x => x.Id == editedId)?.Name</h2>
+    <p class="muted">Todas las actividades están terminadas. Confirma que la entrega fue revisada y aceptada. No se confirma automáticamente al terminar las actividades.</p>
+    <EditForm Model="confirmation" OnValidSubmit="SaveConfirmation" FormName="confirm-milestone">
+    <DataAnnotationsValidator /><ValidationSummary /><fieldset disabled="@busy">
+    <label>Fecha real de cumplimiento<InputDate @bind-Value="confirmation.Date" /></label>
+    <label>Confirmado por<InputText @bind-Value="confirmation.ApproverName" /></label>
+    <div class="form-actions"><button type="submit">Confirmar cumplimiento</button><button type="button" class="secondary" @onclick="Cancel">Cancelar</button></div>
+    </fieldset></EditForm>
+}
+else
+{
+    <EditForm Model="input" OnValidSubmit="Save" FormName="milestone" @key="input">
+    <DataAnnotationsValidator /><ValidationSummary /><fieldset disabled="@busy">
+    <label>Nombre<InputText @bind-Value="input.Name" /></label>
+    <label>Fecha objetivo<InputDate @bind-Value="input.TargetDate" /></label>
+    <h3>Actividades requeridas</h3><p class="muted">Selecciona al menos una actividad. Puedes combinar proyectos de esta iniciativa.</p>
+    @if (choices.Count == 0) { <p>No hay actividades disponibles. Agrega actividades antes de crear el milestone.</p> }
+    <div class="dependency-options">
+    @foreach (var activity in choices)
+    {
+        <label class="check"><input type="checkbox" checked="@selected.Contains(activity.Id)" @onchange="args => Toggle(activity.Id, args)" /><span><strong>@activity.Project.Name</strong> · @activity.Name @(activity.Status == ActivityStatus.Completed ? "✓" : "")</span></label>
+    }
+    </div>
+    <p>Fecha estimada: <strong>@EstimatePreview</strong></p>
+    <p class="muted">Se calcula con la última actividad requerida; usa su fin real si ya está completada. El milestone no tiene duración.</p>
+    <div class="form-actions"><button type="submit" disabled="@(selected.Count == 0)">Guardar milestone</button><button type="button" class="secondary" @onclick="Cancel">Cancelar</button></div>
+    </fieldset></EditForm>
+}
+</dialog>
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public int RefreshVersion { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    private int lastProject = -1, lastVersion = -1;
+    private List<Milestone> milestones = [];
+    private List<ProjectActivity> choices = [];
+    private HashSet<int> selected = [];
+    private MilestoneInput input = new();
+    private MilestoneConfirmationInput confirmation = new();
+    private string? mode, message, modalMessage;
+    private int? editedId;
+    private bool busy, shown;
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<MilestonePanel>? reference;
+    private string EstimatePreview
+    {
+        get
+        {
+            try { return MilestoneRules.Estimate(choices.Where(x => selected.Contains(x.Id))).ToString("dd/MM/yyyy"); }
+            catch (ArgumentException) { return "Selecciona actividades"; }
+        }
+    }
+    private HashSet<int> blockedActivities = [];
+    private string Status(Milestone item)
+    {
+        if (item.ActualDate.HasValue) return "Confirmado";
+        var late = item.EstimatedDate > item.TargetDate;
+        if (item.Requirements.Any(x => blockedActivities.Contains(x.ActivityId)))
+            return late ? $"Atrasado +{item.EstimatedDate.DayNumber - item.TargetDate.DayNumber} días · bloqueo" : "En riesgo · bloqueo";
+        if (item.Requirements.Count > 0 && item.Requirements.All(x => x.Activity.Status == ActivityStatus.Completed))
+            return "Listo para confirmar";
+        return late ? $"Atrasado +{item.EstimatedDate.DayNumber - item.TargetDate.DayNumber} días" : "En tiempo";
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        if (lastProject == ProjectId && lastVersion == RefreshVersion) return;
+        lastProject = ProjectId; lastVersion = RefreshVersion;
+        try { await Load(); }
+        catch (Exception ex) { Logger.LogError(ex, "Error al cargar milestones"); message = "No se pudieron cargar los milestones. Revisa la conexión."; }
+    }
+    private async Task Load()
+    {
+        milestones = []; choices = []; blockedActivities = [];
+        if (ProjectId == 0) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var initiative = await db.Projects.Where(x => x.Id == ProjectId).Select(x => (int?)x.InitiativeId).SingleOrDefaultAsync();
+        if (initiative is null) return;
+        choices = await db.Activities.AsNoTracking().Include(x => x.Project).Where(x => x.Project.InitiativeId == initiative)
+            .OrderBy(x => x.Project.Name).ThenBy(x => x.Name).ToListAsync();
+        blockedActivities = (await db.Blockers.AsNoTracking().Where(x => x.Activity.Project.InitiativeId == initiative && x.ResolvedAt == null).Select(x => x.ActivityId).Distinct().ToListAsync()).ToHashSet();
+        milestones = await db.Milestones.AsNoTracking().Include(x => x.Requirements).ThenInclude(x => x.Activity).ThenInclude(x => x.Project)
+            .Include(x => x.Requirements).ThenInclude(x => x.ApprovedBy).Where(x => x.ProjectId == ProjectId)
+            .OrderBy(x => x.TargetDate).ThenBy(x => x.Id).ToListAsync();
+    }
+    private void New() { input = new(); selected = []; editedId = null; Open("edit"); }
+    private void Edit(Milestone item)
+    {
+        input = new() { Name = item.Name, TargetDate = item.TargetDate };
+        selected = item.Requirements.Select(x => x.ActivityId).ToHashSet(); editedId = item.Id; Open("edit");
+    }
+    private void Confirm(Milestone item) { editedId = item.Id; confirmation = new(); Open("confirm"); }
+    private void Open(string value) { mode = value; modalMessage = null; shown = false; }
+    private void Toggle(int id, ChangeEventArgs args) { if (args.Value is true) selected.Add(id); else selected.Remove(id); }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (mode is null || shown) return;
+        shown = true;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./activity-modal.js");
+        reference ??= DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("show", dialog, reference);
+    }
+    [JSInvokable] public async Task RequestClose() => await Cancel();
+    private async Task Cancel()
+    {
+        if (busy) return;
+        await Close();
+    }
+    private async Task Close()
+    {
+        if (module is not null && shown) await module.InvokeVoidAsync("close", dialog);
+        mode = null; shown = false;
+    }
+    private async Task Save() => await Run(async () => await Service.SaveAsync(ProjectId, editedId, input, selected.ToArray()), "Milestone guardado.");
+    private async Task SaveConfirmation() => await Run(async () => await Service.ConfirmAsync(ProjectId, editedId!.Value, confirmation.Date, confirmation.ApproverName), "Milestone confirmado.");
+    private async Task Reopen(int id) => await Run(async () => await Service.ReopenAsync(ProjectId, id), "Milestone reabierto; requiere nueva confirmación.");
+    private async Task Run(Func<Task> action, string success)
+    {
+        if (busy) return;
+        busy = true; modalMessage = null; message = null;
+        try
+        {
+            await action(); await Close(); await Load(); await OnChanged.InvokeAsync(); message = success;
+        }
+        catch (ArgumentException ex) { if (mode is null) message = ex.Message; else modalMessage = ex.Message; }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "No se pudo guardar el milestone");
+            if (mode is null) message = "No se pudo completar la operación. Revisa la conexión.";
+            else modalMessage = "No se pudo completar la operación. Revisa la conexión.";
+        }
+        finally { busy = false; }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        reference?.Dispose();
+        if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    }
+}
+
+

@@ -1,0 +1,11 @@
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+<NotAuthorized Context="auth">
+@if (auth.User.Identity?.IsAuthenticated == true) { <p>No tienes permiso para esta página. <a href="/mi-trabajo">Mi trabajo</a></p> }
+else { <RequireLogin /> }
+</NotAuthorized>
+</AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

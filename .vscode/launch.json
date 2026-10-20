@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "RaceIT.ProjectManager (Blazor)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build RaceIT.ProjectManager",
+      "program": "${workspaceFolder}/src/RaceIT.ProjectManager/bin/Debug/net10.0/RaceIT.ProjectManager.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/RaceIT.ProjectManager",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "launchSettingsProfile": "http",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5208"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      }
+    }
+  ]
+}

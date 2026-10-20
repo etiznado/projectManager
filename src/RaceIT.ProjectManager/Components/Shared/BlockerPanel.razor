@@ -1,0 +1,129 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using RaceIT.ProjectManager.Data
+@using RaceIT.ProjectManager.Domain
+@using RaceIT.ProjectManager.Services
+@implements IAsyncDisposable
+@inject IDbContextFactory<ProjectManagerDbContext> DbFactory
+@inject BlockerService Service
+@inject IJSRuntime JS
+@inject ILogger<BlockerPanel> Logger
+
+<section class="panel activity-list">
+<header class="page-header"><div><h2>Bloqueos</h2><p class="muted">Problemas que impiden avanzar en una actividad.</p></div><button type="button" disabled="@(busy || ProjectId == 0 || !activities.Any(x => x.Status != ActivityStatus.Completed))" @onclick="New">Nuevo bloqueo</button></header>
+@if (message is not null) { <p class="notice" role="status">@message</p> }
+@if (ProjectId == 0) { <p class="muted">Selecciona un proyecto para administrar sus bloqueos.</p> }
+else
+{
+    <label class="check"><input type="checkbox" @bind="showResolved" /> Mostrar también los resueltos</label>
+    <p class="muted">@blockers.Count(x => x.ResolvedAt == null) abiertos · @blockers.Count(x => x.ResolvedAt != null) resueltos. Resolver un bloqueo no completa la actividad ni cambia sus fechas.</p>
+    @if (!Visible.Any()) { <p class="muted">No hay bloqueos @(showResolved ? "registrados" : "abiertos") en este proyecto.</p> }
+    else
+    {
+    <div class="table-scroll"><table><thead><tr><th>Actividad / problema</th><th>Responsable</th><th>Creado</th><th>Estado</th><th>Resuelto</th><th>Acciones</th></tr></thead><tbody>
+    @foreach (var item in Visible)
+    {
+        <tr><td><strong>@item.Activity.Name</strong><div class="blocker-description">@item.Description</div></td><td>@(item.Responsible?.Name ?? "Sin asignar")</td><td>@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td><span class="status-badge @(item.ResolvedAt is null ? "risk" : "ok")">@(item.ResolvedAt is null ? "Abierto" : "Resuelto")</span></td><td>@(item.ResolvedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+        <td><div class="form-actions milestone-actions">
+        @if (item.ResolvedAt is null)
+        {
+            <button type="button" class="secondary" disabled="@busy" @onclick="() => Edit(item)">Editar</button>
+            <button type="button" disabled="@busy" @onclick="() => Resolve(item.Id)">Resolver</button>
+        }
+        else { <button type="button" class="secondary" disabled="@(busy || item.Activity.Status == ActivityStatus.Completed)" @onclick="() => Reopen(item.Id)">Reabrir</button> }
+        </div></td></tr>
+    }
+    </tbody></table></div>
+    }
+}
+</section>
+
+@if (editing)
+{
+<dialog @ref="dialog" class="activity-modal milestone-modal" aria-labelledby="blocker-title">
+<header class="page-header"><h1 id="blocker-title">@(editedId.HasValue ? "Editar bloqueo" : "Nuevo bloqueo")</h1><button type="button" aria-label="Cerrar bloqueo" @onclick="Cancel" disabled="@busy">✕</button></header>
+@if (modalMessage is not null) { <p class="notice" role="alert">@modalMessage</p> }
+<EditForm Model="input" OnValidSubmit="Save" FormName="blocker" @key="input">
+<DataAnnotationsValidator /><ValidationSummary /><fieldset disabled="@busy">
+<label>Actividad<InputSelect @bind-Value="input.ActivityId" disabled="@editedId.HasValue"><option value="0">Selecciona una actividad</option>
+@foreach (var activity in activities) { <option value="@activity.Id" disabled="@(activity.Status == ActivityStatus.Completed)">@activity.Name</option> }
+</InputSelect></label>
+<label>¿Qué impide avanzar?<InputTextArea @bind-Value="input.Description" /></label>
+<label>Responsable de resolverlo (opcional)<InputText @bind-Value="input.ResponsibleName" /></label>
+<p class="muted">Si el problema modifica la entrega prevista, actualiza también el pronóstico de la actividad.</p>
+<div class="form-actions"><button type="submit">Guardar bloqueo</button><button type="button" class="secondary" @onclick="Cancel">Cancelar</button></div>
+</fieldset></EditForm>
+</dialog>
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public int RefreshVersion { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    private List<Blocker> blockers = [];
+    private List<ProjectActivity> activities = [];
+    private IEnumerable<Blocker> Visible => blockers.Where(x => showResolved || x.ResolvedAt == null);
+    private int lastProject = -1, lastVersion = -1;
+    private bool busy, editing, shown, showResolved;
+    private int? editedId;
+    private string? message, modalMessage;
+    private BlockerInput input = new();
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<BlockerPanel>? reference;
+    protected override async Task OnParametersSetAsync()
+    {
+        if (lastProject == ProjectId && lastVersion == RefreshVersion) return;
+        lastProject = ProjectId; lastVersion = RefreshVersion;
+        try { await Load(); }
+        catch (Exception ex) { Logger.LogError(ex, "Error al cargar bloqueos"); message = "No se pudieron cargar los bloqueos. Revisa la conexión."; }
+    }
+    private async Task Load()
+    {
+        blockers = []; activities = [];
+        if (ProjectId == 0) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        activities = await db.Activities.AsNoTracking().Where(x => x.ProjectId == ProjectId).OrderBy(x => x.Name).ToListAsync();
+        blockers = await db.Blockers.AsNoTracking().Include(x => x.Activity).Include(x => x.Responsible)
+            .Where(x => x.Activity.ProjectId == ProjectId).OrderBy(x => x.ResolvedAt != null).ThenByDescending(x => x.CreatedAt).ToListAsync();
+    }
+    private void New() { input = new() { ActivityId = activities.FirstOrDefault(x => x.Status != ActivityStatus.Completed)?.Id ?? 0 }; editedId = null; Open(); }
+    private void Edit(Blocker item) { input = new() { ActivityId = item.ActivityId, Description = item.Description, ResponsibleName = item.Responsible?.Name }; editedId = item.Id; Open(); }
+    private void Open() { editing = true; shown = false; modalMessage = null; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!editing || shown) return;
+        shown = true;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./activity-modal.js");
+        reference ??= DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("show", dialog, reference);
+    }
+    [JSInvokable] public async Task RequestClose() => await Cancel();
+    private async Task Cancel() { if (!busy) await Close(); }
+    private async Task Close()
+    {
+        if (module is not null && shown) await module.InvokeVoidAsync("close", dialog);
+        editing = false; shown = false;
+    }
+    private async Task Save() => await Run(() => Service.SaveAsync(ProjectId, editedId, input), "Bloqueo guardado.");
+    private async Task Resolve(int id) => await Run(() => Service.ResolveAsync(ProjectId, id), "Bloqueo resuelto. Las fechas del cronograma se conservan.");
+    private async Task Reopen(int id) => await Run(() => Service.ReopenAsync(ProjectId, id), "Bloqueo reabierto.");
+    private async Task Run(Func<Task> action, string success)
+    {
+        if (busy) return;
+        busy = true; modalMessage = null; message = null;
+        try { await action(); await Close(); await Load(); await OnChanged.InvokeAsync(); message = success; }
+        catch (ArgumentException ex) { if (editing) modalMessage = ex.Message; else message = ex.Message; }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al guardar bloqueo");
+            if (editing) modalMessage = "No se pudo completar la operación. Revisa la conexión.";
+            else message = "No se pudo completar la operación. Revisa la conexión.";
+        }
+        finally { busy = false; }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        reference?.Dispose();
+        if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    }
+}

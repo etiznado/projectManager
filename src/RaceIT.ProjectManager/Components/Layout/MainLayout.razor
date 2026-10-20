@@ -1,0 +1,14 @@
+@inherits LayoutComponentBase
+
+<AuthorizeView><Authorized Context="session">
+<nav class="form-actions"><span>@session.User.Identity?.Name</span><a href="/mi-trabajo">Mi trabajo</a>
+@if (session.User.IsInRole("Administrador")) { <a href="/administracion">Administración</a> }
+<form method="post" action="/session/logout" data-enhance="false"><AntiforgeryToken /><button type="submit" class="secondary">Cambiar usuario / Salir</button></form></nav>
+</Authorized></AuthorizeView>
+@Body
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

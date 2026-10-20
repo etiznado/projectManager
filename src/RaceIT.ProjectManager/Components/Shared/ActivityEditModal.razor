@@ -1,0 +1,49 @@
+﻿@using RaceIT.ProjectManager.Components.Pages
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<dialog @ref="dialog" class="activity-modal" aria-labelledby="activity-edit-title">
+    <EditActivity Id="Id" IsModal="true" OnClose="Close" @ref="editor" />
+</dialog>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [Parameter] public EventCallback<bool> OnClose { get; set; }
+    private ElementReference dialog;
+    private EditActivity? editor;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<ActivityEditModal>? reference;
+    private bool closing;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./activity-modal.js");
+        reference = DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("show", dialog, reference);
+    }
+
+    [JSInvokable]
+    public async Task RequestClose()
+    {
+        if (editor is not null) await editor.Cancel();
+    }
+
+    private async Task Close(bool saved)
+    {
+        if (closing) return;
+        closing = true;
+        if (module is not null) await module.InvokeVoidAsync("close", dialog);
+        await OnClose.InvokeAsync(saved);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        reference?.Dispose();
+        if (module is not null)
+        {
+            try { await module.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}

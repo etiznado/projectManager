@@ -1,0 +1,35 @@
+﻿.tv-screen { position:fixed; inset:0; z-index:10; box-sizing:border-box; display:flex; flex-direction:column; gap:18px; padding:24px 30px 16px; background:radial-gradient(ellipse at 30% 0,#102d43 0,#091827 65%); color:#edf4ff; font-family:'Segoe UI',sans-serif; overflow:hidden; }
+.tv-header { display:flex; justify-content:space-between; align-items:center; min-height:85px; gap:24px; }
+.tv-eyebrow { color:#8db0d5; font-size:17px; font-weight:600; letter-spacing:3px; }
+.tv-screen h1 { font-size:clamp(32px,3.1vw,60px); margin:3px 0 0; line-height:1.1; max-width:1200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tv-header-right { text-align:right; flex-shrink:0; font-size:25px; }
+.tv-controls { display:flex; align-items:center; justify-content:flex-end; gap:18px; margin-top:12px; font-size:13px; opacity:.4; }
+.tv-controls:hover,.tv-controls:focus-within { opacity:1; }
+.tv-controls button { padding:5px 9px; background:#16334b; color:#c4d6eb; font-size:13px; }
+.tv-metrics { display:grid; grid-template-columns:1fr 1.3fr 1fr; border-top:1px solid #284058; border-bottom:1px solid #284058; padding:18px 0; gap:24px; }
+.tv-metrics>div { padding-left:22px; border-left:1px solid #33516d; min-width:0; }
+.tv-metrics>div:first-child { border-left:0; padding-left:0; }
+.tv-metrics span { display:block; color:#bbcee4; font-size:23px; margin-bottom:4px; }
+.tv-metrics strong { display:block; font-size:clamp(30px,3.25vw,63px); line-height:1.12; white-space:nowrap; }
+.tv-metrics strong small { display:inline; font-size:30px; margin-left:12px; }
+.tv-metrics small { display:block; color:#9eb7d1; font-size:17px; margin-top:7px; }
+.tv-metrics .tv-health { display:inline-block; font-size:clamp(22px,2vw,39px); padding:10px 16px; border-radius:9px; }
+.tv-health-late { background:#ff747b; color:#122236; }.tv-health-risk { background:#ffc24d; color:#152638; }.tv-health-ok { background:#23c9a6; color:#072b29; }.tv-health-empty { background:#38526e; color:#e3ecfa; }
+.tv-main { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,3fr) minmax(330px,1fr); gap:20px; }
+.tv-chart-panel { min-height:0; border:1px solid #263f58; border-radius:9px; overflow:hidden; background:#0a1c2e; }
+.tv-timeline { display:block; width:100%; height:100%; }
+.tv-sidebar { display:flex; flex-direction:column; gap:16px; min-height:0; }
+.tv-card { background:linear-gradient(130deg,#10283e,#0c1d30); border:1px solid #2a4762; border-radius:12px; padding:20px; flex:1; min-height:0; overflow:hidden; }
+.tv-card h2 { font-size:25px; margin:0 0 14px; }.tv-card h2>span { color:#ffc24d; float:right; }
+.tv-card p { margin:5px 0; line-height:1.35; font-size:19px; }.tv-card small { display:block; color:#a5bcd5; font-size:16px; margin-top:4px; }
+.tv-milestone { display:flex; gap:12px; margin:14px 0; }.tv-milestone>div { min-width:0; }.tv-milestone strong { font-size:22px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.2; }
+.tv-diamond { color:#ffc24d; font-size:27px; }.tv-milestone p { font-weight:600; font-size:19px; }.tv-milestone p .tv-muted { font-weight:400; font-size:15px; }
+.tv-blocker { border-left:3px solid #ffc24d; padding-left:12px; margin:14px 0; }.tv-blocker strong { font-size:19px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }.tv-blocker p { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+.tv-footer { display:flex; justify-content:space-between; align-items:center; gap:18px; color:#a6bed8; font-size:14px; min-height:26px; }
+.tv-legend { display:flex; flex-wrap:wrap; gap:16px; }.tv-legend span { white-space:nowrap; }.tv-legend i { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:5px; }
+.tv-muted { color:#9eb6d0; }.tv-teal { color:#36d9bb!important; }.tv-late { color:#ff7c84!important; }
+.tv-stale { background:#70411c; color:#fff0d9; padding:8px 15px; font-size:17px; border-radius:6px; }
+.tv-empty { margin:auto; text-align:center; }.tv-empty p { font-size:23px; }.tv-empty a { display:inline-block; margin-top:25px; }.tv-empty-chart { display:grid; place-items:center; height:100%; font-size:25px; color:#9eb6d0; text-align:center; padding:20px; }
+.tv-open-link { background:#27c4ca; color:#082333; padding:10px 16px; border-radius:6px; text-decoration:none; font-weight:600; }
+@media(max-width:1300px) { .tv-screen { gap:12px; padding:15px; }.tv-header { min-height:70px; }.tv-header-right { font-size:19px; }.tv-main { grid-template-columns:minmax(0,3fr) minmax(270px,1fr); gap:12px; }.tv-metrics { padding:12px 0; }.tv-metrics span { font-size:18px; }.tv-metrics strong small { font-size:20px; }.tv-card { padding:14px; }.tv-card h2 { font-size:20px; }.tv-milestone strong { font-size:18px; }.tv-card p,.tv-blocker strong { font-size:16px; }.tv-card small { font-size:14px; }.tv-footer { font-size:11px; }.tv-legend { gap:10px; } }
+@media(max-width:800px) { .tv-screen { position:absolute; overflow:auto; min-height:100dvh; height:auto; }.tv-main { display:flex; flex-direction:column; min-height:700px; }.tv-chart-panel { min-height:500px; }.tv-sidebar { flex-direction:row; }.tv-metrics { gap:8px; }.tv-metrics>div { padding-left:8px; }.tv-metrics strong { font-size:25px; }.tv-metrics strong small { font-size:15px; }.tv-metrics .tv-health { font-size:17px; }.tv-header-right { font-size:15px; }.tv-controls { font-size:11px; gap:7px; }.tv-footer { flex-wrap:wrap; } }

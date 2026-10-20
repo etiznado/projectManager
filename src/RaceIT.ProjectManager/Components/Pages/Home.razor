@@ -1,0 +1,43 @@
+@attribute [Authorize(Roles = "Administrador")]
+@page "/"
+@using Microsoft.EntityFrameworkCore
+@using RaceIT.ProjectManager.Data
+@inject IDbContextFactory<ProjectManagerDbContext> DbFactory
+@inject ILogger<Home> Logger
+
+<PageTitle>RaceIT Project Manager</PageTitle>
+
+<h1>RaceIT Project Manager</h1>
+<p>Administración de iniciativas, proyectos y cronogramas.</p>
+<p><a href="/administracion">Administrar iniciativas, proyectos y actividades →</a></p>
+<h2>Conexión a la base de datos</h2>
+<button @onclick="CheckConnectionAsync" disabled="@checking">@(checking ? "Comprobando..." : "Probar conexión SQL Server")</button>
+<p role="status">@message</p>
+
+@code {
+    private bool checking;
+    private string message = "Pendiente de comprobar.";
+
+    private async Task CheckConnectionAsync()
+    {
+        checking = true;
+        message = "Comprobando conexión...";
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            message = await db.Database.CanConnectAsync()
+                ? "Conexión correcta a projectManager."
+                : "No se pudo conectar. Verifica SQL Server Express, la base projectManager y los permisos de tu cuenta de Windows.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al comprobar la conexión a SQL Server.");
+            message = "No se pudo comprobar la conexión. Consulta el registro del servidor para más detalles.";
+        }
+        finally
+        {
+            checking = false;
+        }
+    }
+}
+

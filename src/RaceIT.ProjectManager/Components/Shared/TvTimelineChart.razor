@@ -1,0 +1,125 @@
+﻿@using System.Globalization
+@using RaceIT.ProjectManager.Domain
+@using RaceIT.ProjectManager.Services
+
+<svg class="tv-timeline" viewBox="0 0 1400 @F(height)" role="img" aria-label="Timeline de actividades principales, plan original y dependencias de la página actual">
+<defs><marker id="dependency-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7" fill="#a5bbd5" /></marker></defs>
+<text x="15" y="29" fill="#a8bfd9" font-size="20">PROYECTO / ACTIVIDAD</text>
+@foreach (var date in ticks)
+{
+    <g><line x1="@F(X(date))" x2="@F(X(date))" y1="45" y2="@F(height - 15)" stroke="#263c55" stroke-dasharray="3 6" /><text x="@F(X(date))" y="29" fill="#c2d3e7" font-size="20" text-anchor="middle">@date.ToString("dd MMM", Spanish)</text></g>
+}
+@foreach (var row in layout)
+{
+    <g>
+    @if (row.Header)
+    {
+        <g><rect x="0" y="@F(row.Y - 54)" width="1400" height="31" fill="#12283e" /><text x="15" y="@F(row.Y - 32)" fill="#f1f6ff" font-size="23" font-weight="700">@Short(row.Row.Project.Name, 25)</text><text x="@F(1370)" y="@F(row.Y - 32)" fill="#9cb7d1" font-size="18" text-anchor="end">@TvTimeline.ProjectHealth(Data, row.Row.Project.Id, Today)</text></g>
+    }
+    <line x1="0" x2="1400" y1="@F(row.Y + 27)" y2="@F(row.Y + 27)" stroke="#1a3048" />
+    @if (row.Row.Activity is null)
+    {
+        <g><text x="20" y="@F(row.Y + 5)" fill="#9eb1c7" font-size="20">Sin actividades principales</text></g>
+    }
+    else
+    {
+        var activity = row.Row.Activity;
+        <g><title>@activity.Name · Plan: @activity.PlannedStart.ToString("dd/MM/yyyy") a @activity.PlannedFinish.ToString("dd/MM/yyyy") · Pronóstico: @activity.EstimatedStart.ToString("dd/MM/yyyy") a @activity.EstimatedFinish.ToString("dd/MM/yyyy")</title>
+        <text x="20" y="@F(row.Y - 1)" fill="#dce8f6" font-size="22">@Short(activity.Name, 27)</text>
+        <text x="20" y="@F(row.Y + 19)" fill="#9bb1ca" font-size="16">@RowNote(activity)</text>
+        </g>
+    }
+    </g>
+}
+@foreach (var edge in Data.Dependencies)
+{
+    var from = layout.FirstOrDefault(x => x.Row.Activity?.Id == edge.PredecessorId);
+    var to = layout.FirstOrDefault(x => x.Row.Activity?.Id == edge.SuccessorId);
+    if (from is null || to is null) continue;
+    var start = Bar(from.Row.Activity!).End;
+    var end = Bar(to.Row.Activity!).Start;
+    var middle = Math.Min(1380, Math.Max(start + 12, end - 14));
+    <g><path d="@($"M {F(start)} {F(from.Y)} H {F(middle)} V {F(to.Y)} H {F(end)}")" fill="none" stroke="#a5bbd5" stroke-width="1.5" opacity=".6" marker-end="url(#dependency-arrow)" /></g>
+}
+@foreach (var row in layout.Where(x => x.Row.Activity is not null))
+{
+    var activity = row.Row.Activity!;
+    var bar = Bar(activity);
+    var color = TvTimeline.Color(activity, Data.Blockers.Any(x => x.ActivityId == activity.Id), Today);
+    <g><line x1="@F(X(activity.PlannedStart))" x2="@F(PlanEnd(activity))" y1="@F(row.Y + 20)" y2="@F(row.Y + 20)" stroke="#a2b0c0" stroke-width="3" stroke-dasharray="7 5" />
+    <rect x="@F(bar.Start)" y="@F(row.Y - 12)" width="@F(Math.Max(4, bar.End - bar.Start))" height="24" rx="5" fill="@color" />
+    </g>
+}
+@foreach (var milestone in Data.Milestones)
+{
+    var row = layout.LastOrDefault(x => x.Row.Project.Id == milestone.ProjectId);
+    if (row is null) continue;
+    var x = X(milestone.ActualDate ?? milestone.EstimatedDate);
+    var y = row.Y + 18;
+    <g><title>@milestone.Name · @((milestone.ActualDate ?? milestone.EstimatedDate).ToString("dd/MM/yyyy"))</title><path d="@($"M {F(x)} {F(y - 8)} L {F(x + 8)} {F(y)} L {F(x)} {F(y + 8)} L {F(x - 8)} {F(y)} Z")" fill="@(milestone.ActualDate.HasValue ? "#26d2b5" : "#ffc24d")" stroke="#0b1829" stroke-width="2" /></g>
+}
+<line x1="@F(X(Today))" x2="@F(X(Today))" y1="45" y2="@F(height - 12)" stroke="#43e0ed" stroke-width="2" stroke-dasharray="7 5" />
+<rect x="@F(X(Today) - 27)" y="35" width="54" height="21" rx="4" fill="#43e0ed" /><text x="@F(X(Today))" y="51" fill="#061728" text-anchor="middle" font-size="15" font-weight="700">HOY</text>
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public TvDashboard Data { get; set; } = null!;
+    [Parameter] public int Page { get; set; }
+    [Parameter] public DateOnly Today { get; set; }
+    private static readonly CultureInfo Spanish = CultureInfo.GetCultureInfo("es-MX");
+    private sealed record LayoutRow(TvRow Row, double Y, bool Header);
+    private List<LayoutRow> layout = [];
+    private List<DateOnly> ticks = [];
+    private DateOnly start, end;
+    private double height;
+    private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    private static string Short(string text, int max) => text.Length > max ? text[..(max - 1)] + "…" : text;
+    protected override void OnParametersSet()
+    {
+        (start, end) = TvTimeline.Range(Data, Today);
+        ticks = [];
+        var step = Math.Max(7, (int)Math.Ceiling((end.DayNumber - start.DayNumber) / 7d / 7) * 7);
+        for (var date = start; date <= end; date = date.AddDays(step)) ticks.Add(date);
+        layout = []; var y = 65d; var last = -1;
+        foreach (var row in TvTimeline.Page(Data, Page))
+        {
+            var header = last != row.Project.Id;
+            if (header) y += 34;
+            y += 27; layout.Add(new(row, y, header)); y += 31; last = row.Project.Id;
+        }
+        height = Math.Max(590, y + 15);
+    }
+    private double X(DateOnly date) => 350 + Math.Clamp((date.DayNumber - start.DayNumber) / (double)(end.DayNumber - start.DayNumber), 0, 1) * 1010;
+    private (double Start, double End) Bar(ProjectActivity activity)
+    {
+        var first = activity.ActualStart ?? activity.EstimatedStart;
+        var finish = TvTimeline.Finish(activity);
+        var startFraction = activity.ActualStart.HasValue ? 0 : (double)(activity.EstimatedStartHour / 24m);
+        var endFraction = activity.Status == ActivityStatus.Completed ? 1
+            : activity.EstimatedFinishHour == 0 && activity.EstimatedDurationType == DurationType.WorkingTime ? 1 : (double)(activity.EstimatedFinishHour / 24m);
+        var dayWidth = 1010d / (end.DayNumber - start.DayNumber);
+        return (X(first) + startFraction * dayWidth, X(finish) + endFraction * dayWidth);
+    }
+    private double PlanEnd(ProjectActivity activity)
+    {
+        var days = activity.Project.WorkCalendar.Days.ToDictionary(x => x.DayOfWeek, x => x.WorkingHours);
+        try
+        {
+            var finish = WorkCalendarCalculator.Schedule(new(activity.PlannedStart, 0), activity.PlannedDurationHours, days, activity.PlannedDurationType).Finish;
+            return X(activity.PlannedFinish) + (finish.Date == activity.PlannedFinish ? (double)(finish.Hour / 24m) : 1) * 1010d / (end.DayNumber - start.DayNumber);
+        }
+        catch (ArgumentException) { return X(activity.PlannedFinish.AddDays(1)); }
+    }
+    private string RowNote(ProjectActivity activity)
+    {
+        var visibleIds = layout.Where(x => x.Row.Activity is not null).Select(x => x.Row.Activity!.Id).ToHashSet();
+        var outside = Data.Dependencies.Count(x => x.SuccessorId == activity.Id && !visibleIds.Contains(x.PredecessorId));
+        var state = activity.Status == ActivityStatus.Completed ? "Completada" : activity.Status == ActivityStatus.InProgress ? "En curso" : "Pendiente";
+        if (activity.EstimatedDurationType == DurationType.ElapsedTime) state += " · Espera";
+        if (activity.EstimatedDurationType == DurationType.ManualDates) state += " · Flexible";
+        return state + (outside > 0 ? $" · {outside} dep. fuera de vista" : "");
+    }
+}
+
+
+
