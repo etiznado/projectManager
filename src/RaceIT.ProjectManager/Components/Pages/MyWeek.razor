@@ -1,0 +1,394 @@
+@page "/mi-semana"
+@attribute [Authorize]
+@inject ActivityService Activities
+@inject WorkRecordService Time
+@inject WeeklyPlanService Plan
+@inject WorkAccess Access
+@inject TemplateService Templates
+
+<PageTitle>Mi semana | RaceIT</PageTitle>
+<div class="week-workspace">
+@if (error is not null) { <p role="alert">@error</p> }
+
+<div class="week-toolbar">
+<div class="week-nav">
+    <button class="secondary" disabled="@savingDrop" @onclick="PrevWeek">← Anterior</button>
+    <strong>@weekStart.ToString("ddd d MMM") – @weekStart.AddDays(6).ToString("ddd d MMM yyyy")</strong>
+    <button class="secondary" disabled="@savingDrop" @onclick="NextWeek">Siguiente →</button>
+    <button class="secondary" disabled="@savingDrop" @onclick="ThisWeek">Esta semana</button>
+</div>
+@if (view is not null)
+{
+    <div class="metrics">
+        <div><span>Disponibles</span><strong>@Format(view.Layout.WeeklyCapacityHours)</strong></div>
+        <div class="metric-planned"><span>Planeadas</span><strong>@Format(view.Layout.PlannedHours)</strong></div>
+        <div class="metric-unassigned"><span>Sin asignar</span><strong>@Format(view.Layout.FreeHours)</strong></div>
+        <div class="metric-completed"><span>Completadas</span><strong>@Format(registeredTotal)</strong></div>
+    </div>
+}
+</div>
+
+@if (view is not null)
+{
+    <div class="week-layout">
+        @if (poolCollapsed)
+        {
+            <button class="pool-expand" aria-label="Expandir actividades disponibles" aria-expanded="false" @onclick="() => poolCollapsed = false">
+                <svg class="pool-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 6 6-6 6M13 6l6 6-6 6" /></svg>
+            </button>
+        }
+        else
+        {
+        <section class="panel pool">
+            <div class="pool-heading">
+                <h2>Actividades disponibles</h2>
+                <button class="pool-collapse" aria-label="Colapsar actividades disponibles" aria-expanded="true" @onclick="() => poolCollapsed = true">
+                    <svg class="pool-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 6-6 6 6 6M18 6l-6 6 6 6" /></svg>
+                </button>
+            </div>
+            @if (pool.Count == 0) { <p class="muted">Sin actividades abiertas.</p> }
+            @foreach (var row in pool)
+            {
+                <div @key="row.Activity.Id" class="pool-card" draggable="true" @ondragstart="() => BeginDrag(row.Activity.Id, null)" @ondragend="EndDrag">
+                    <div class="pool-card-heading">
+                        <span class="drag-grip" aria-hidden="true">⠿</span>
+                        <div class="link" @onclick="() => SelectAsync(row.Activity.Id)"><strong>@row.Activity.Title</strong></div>
+                    </div>
+                    <div class="muted">@(row.Activity.Project?.Name ?? "Sin proyecto") · @Format(row.Activity.CurrentEstimateHours) · quedan @Format(row.RemainingHours)</div>
+                </div>
+            }
+        </section>
+        }
+
+        <section class="panel plan">
+            <div class="week-schedule" style="@ScheduleRows">
+                <div class="schedule-heading" @ondragover:preventDefault @ondrop="() => DropAsync(null)">Actividad</div>
+                <div class="schedule-days">
+                    @foreach (var day in view.Layout.Days)
+                    {
+                        <div class="schedule-day" style="width:@Pct(day.WorkingHours, axis)%"><strong>@day.Date.ToString("ddd d")</strong><span>@Format(day.WorkingHours)</span></div>
+                    }
+                </div>
+                @{ decimal offset = 0m; }
+                @foreach (var block in blocks)
+                {
+                    var start = offset;
+                    <div @key="block.BlockId" class="schedule-row @(dropBeforeId == block.BlockId ? "drop-before" : "")"
+                         @ondragover:preventDefault @ondragenter="() => dropBeforeId = block.BlockId" @ondrop="() => DropAsync(block.BlockId)">
+                        <div class="schedule-context">
+                            <span class="drag-grip" draggable="true" title="Arrastrar para reordenar" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag">⠿</span>
+                            <button class="activity-select" @onclick="() => SelectAsync(block.ActivityId)"><strong>@block.Title</strong><span class="muted">@(block.ProjectName ?? "Sin proyecto")</span></button>
+                            <button class="secondary remove-block" title="Quitar del plan" aria-label="@($"Quitar {block.Title} del plan")" @onclick="() => RemoveAsync(block)">✕</button>
+                        </div>
+                        <div class="schedule-track">
+                            @foreach (var day in view.Layout.Days)
+                            {
+                                <div class="schedule-gridline" style="left:@Pct(day.CumulativeStart, axis)%"></div>
+                            }
+                            @if (nowPct is not null) { <div class="now-line" style="left:@nowPct%"></div> }
+                            <button class="schedule-bar" draggable="true" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag"
+                                    style="left:@Pct(start, axis)%;width:@Pct(block.Hours, axis)%" @onclick="() => SelectAsync(block.ActivityId)" title="@($"{block.Title} · {Format(block.Hours)} planeadas")">
+                                <span class="schedule-progress" style="width:@Pct(block.Progress, 1m)%" aria-hidden="true"></span>
+                                <span class="schedule-hours">@Format(block.Hours)</span>
+                            </button>
+                        </div>
+                    </div>
+                    offset += block.Hours;
+                }
+                <div class="schedule-context schedule-drop-tail @(dropBeforeId == -1 ? "drop-active" : "")"
+                     @ondragover:preventDefault @ondragenter="() => dropBeforeId = -1" @ondrop="() => DropAsync(null)">
+                    @if (blocks.Count == 0) { <span class="muted">Arrastra aquí una actividad.</span> }
+                </div>
+                <div class="schedule-track schedule-tail-track">
+                    @foreach (var day in view.Layout.Days)
+                    {
+                        <div class="schedule-gridline" style="left:@Pct(day.CumulativeStart, axis)%"></div>
+                    }
+                    @if (nowPct is not null) { <div class="now-line" style="left:@nowPct%"></div> }
+                </div>
+            </div>
+        </section>
+    </div>
+}
+
+</div>
+<section class="panel">
+    <h2>Generar desde plantilla</h2>
+    <label>Plantilla
+        <select @bind="templateId">
+            <option value="0">Selecciona una plantilla</option>
+            @foreach (var t in templates) { <option value="@t.Id">@t.Name</option> }
+        </select>
+    </label>
+    <label>Nombre de la carrera<InputText @bind-Value="raceName" /></label>
+    <label>Año<InputNumber @bind-Value="raceYear" /></label>
+    <button @onclick="GenerateAsync">Crear actividades</button>
+</section>
+
+@if (detail is not null)
+{
+    <section class="panel">
+        <h2>@detail.Activity.Title</h2>
+        <p>@(detail.Activity.Project?.Name ?? "Sin proyecto") · <span class="badge info">@Status(detail.Activity.Status)</span></p>
+        <p class="muted">@Format(detail.Activity.CurrentEstimateHours) estimación · @Format(detail.RecordedHours) registradas · @Format(detail.RemainingHours) pendientes @if (detail.NeedsReestimate) { <span class="badge risk">Revisar estimación</span> }</p>
+
+        <div class="form-actions">
+            @if (detail.Activity.Status == ActivityStatus.Pending)
+            {
+                <button @onclick="StartAsync">Iniciar</button>
+            }
+            else if (detail.Activity.Status == ActivityStatus.InProgress)
+            {
+                @if (detail.OpenSession is not null) { <button @onclick="PauseAsync">Pausar</button> }
+                else { <button @onclick="StartAsync">Reanudar</button> }
+            }
+            @if (detail.Activity.Status != ActivityStatus.Completed)
+            {
+                <button class="secondary" @onclick="() => showManual = !showManual">Registrar tiempo</button>
+                <button class="secondary" @onclick="CompleteAsync">Completar</button>
+                <button class="secondary" @onclick="ContinueAsync">Continuar</button>
+            }
+        </div>
+
+        @if (showManual)
+        {
+            <EditForm Model="manualInput" OnValidSubmit="RecordManualAsync" FormName="manual-time">
+                <DataAnnotationsValidator /><ValidationSummary />
+                <label>Horas<InputNumber @bind-Value="manualInput.Hours" step="0.25" /></label>
+                <label>Nota (opcional)<InputText @bind-Value="manualInput.Note" /></label>
+                <button type="submit">Guardar tiempo</button>
+            </EditForm>
+        }
+
+        @if (detail.Records.Count > 0)
+        {
+            <h3>Registros recientes</h3>
+            <ul>
+                @foreach (var record in detail.Records)
+                {
+                    <li>@RecordText(record)</li>
+                }
+            </ul>
+        }
+
+        @if (continuations.Count > 0)
+        {
+            <h3>Continuaciones</h3>
+            <ul>
+                @foreach (var c in continuations)
+                {
+                    <li>@c.FromActivity.Title → @c.ToActivity.Title</li>
+                }
+            </ul>
+        }
+    </section>
+}
+
+@code {
+    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; }
+
+    private List<ActivityService.ActivityRow> pool = [];
+    private List<BlockVm> blocks = [];
+    private WeeklyPlanService.WeekView? view;
+    private WorkRecordService.ActivityDetail? detail;
+    private int? selectedId;
+    private bool showManual;
+    private readonly ManualTimeInput manualInput = new();
+    private DateOnly weekStart;
+    private decimal registeredTotal;
+    private List<Template> templates = [];
+    private int templateId;
+    private string raceName = "";
+    private int raceYear = DateTime.Today.Year;
+    private List<Continuation> continuations = [];
+    private string? error;
+    private int? draggedActivityId;
+    private int? draggedBlockId;
+    private int? dropBeforeId;
+    private bool savingDrop;
+    private bool poolCollapsed;
+
+    private void BeginDrag(int? activityId, int? blockId)
+    {
+        if (savingDrop) return;
+        draggedActivityId = activityId;
+        draggedBlockId = blockId;
+    }
+
+    private void EndDrag()
+    {
+        draggedActivityId = null;
+        draggedBlockId = null;
+        dropBeforeId = null;
+    }
+
+    private async Task DropAsync(int? beforeBlockId)
+    {
+        if (savingDrop) return;
+        var activityId = draggedActivityId;
+        var blockId = draggedBlockId;
+        EndDrag();
+        if (activityId is null && blockId is null) return;
+        savingDrop = true;
+        error = null;
+        try
+        {
+            if (activityId is int id)
+            {
+                var row = pool.FirstOrDefault(r => r.Activity.Id == id);
+                if (row is null) return;
+                await Plan.AddBlockAsync(id, row.RemainingHours > 0 ? row.RemainingHours : 1m, weekStart, beforeBlockId);
+            }
+            else if (blockId is int sourceId && sourceId != beforeBlockId && view is not null)
+            {
+                var order = blocks.Select(b => b.BlockId).ToList();
+                if (!order.Remove(sourceId)) return;
+                var target = beforeBlockId is int targetId ? order.IndexOf(targetId) : order.Count;
+                if (target < 0) return;
+                order.Insert(target, sourceId);
+                await Plan.ReorderAsync(view.PlanId, order);
+            }
+            await RefreshWeekAsync();
+        }
+        catch (Exception ex) { error = ex.Message; await RefreshWeekAsync(); }
+        finally { savingDrop = false; }
+    }
+
+    private string ScheduleRows => "grid-template-rows: max-content " + string.Join(" ", Enumerable.Repeat("max-content", blocks.Count)) + " minmax(44px, 1fr);";
+
+    private decimal axis => view?.Layout.AxisTotal ?? 1m;
+
+    private string? nowPct
+    {
+        get
+        {
+            if (view is null) return null;
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var day = view.Layout.Days.FirstOrDefault(d => d.Date == today);
+            return day is null ? null : Pct(day.CumulativeStart, axis);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        weekStart = StartOfWeek(DateOnly.FromDateTime(DateTime.Today));
+        await RefreshWeekAsync();
+    }
+
+    private static DateOnly StartOfWeek(DateOnly date)
+    {
+        var diff = ((int)date.DayOfWeek + 6) % 7;
+        return date.AddDays(-diff);
+    }
+
+    private async Task RefreshWeekAsync()
+    {
+        try
+        {
+            view = await Plan.GetWeekAsync(weekStart);
+            blocks = view.Layout.Blocks.Select(b => new BlockVm { BlockId = b.BlockId, ActivityId = b.ActivityId, Title = b.Title, ProjectName = b.ProjectName, Hours = b.PlannedHours }).ToList();
+            var personId = await Access.PersonIdAsync();
+            var allRows = await Activities.ListRowsAsync(personId);
+            var rowsById = allRows.ToDictionary(r => r.Activity.Id);
+            foreach (var block in blocks)
+            {
+                if (!rowsById.TryGetValue(block.ActivityId, out var row)) continue;
+                block.Progress = row.Activity.Status == ActivityStatus.Completed ? 1m
+                    : row.Activity.CurrentEstimateHours > 0
+                        ? Math.Clamp(row.RecordedHours / row.Activity.CurrentEstimateHours, 0m, 1m) : 0m;
+            }
+            var plannedActivityIds = blocks.Select(b => b.ActivityId).ToHashSet();
+            pool = allRows.Where(r => r.Activity.Status != ActivityStatus.Completed && !plannedActivityIds.Contains(r.Activity.Id)).ToList();
+            registeredTotal = allRows.Sum(r => r.RecordedHours);
+            templates = await Templates.ListAsync();
+        }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task RemoveAsync(BlockVm block)
+    {
+        try { await Plan.RemoveBlockAsync(block.BlockId); await RefreshWeekAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task PrevWeek() { EndDrag(); weekStart = weekStart.AddDays(-7); await RefreshWeekAsync(); }
+    private async Task NextWeek() { EndDrag(); weekStart = weekStart.AddDays(7); await RefreshWeekAsync(); }
+    private async Task ThisWeek() { EndDrag(); weekStart = StartOfWeek(DateOnly.FromDateTime(DateTime.Today)); await RefreshWeekAsync(); }
+
+    private async Task SelectAsync(int id)
+    {
+        selectedId = id;
+        showManual = false;
+        await LoadDetailAsync(id);
+    }
+
+    private async Task LoadDetailAsync(int id)
+    {
+        try { detail = await Time.GetDetailAsync(id); continuations = await Activities.ListContinuationsAsync(id); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task StartAsync()
+    {
+        if (detail is null) return;
+        try { await Time.StartSessionAsync(detail.Activity.Id); await RefreshAfterDetailAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task PauseAsync()
+    {
+        if (detail is null) return;
+        try { await Time.PauseSessionAsync(detail.Activity.Id); await RefreshAfterDetailAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task RecordManualAsync()
+    {
+        if (detail is null) return;
+        try { await Time.RecordManualAsync(detail.Activity.Id, manualInput.Hours, manualInput.Note); showManual = false; await RefreshAfterDetailAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task CompleteAsync()
+    {
+        if (detail is null) return;
+        try { await Time.CompleteAsync(detail.Activity.Id); await RefreshAfterDetailAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task RefreshAfterDetailAsync()
+    {
+        await RefreshWeekAsync();
+        if (selectedId is int id) await LoadDetailAsync(id);
+    }
+
+    private async Task GenerateAsync()
+    {
+        if (templateId == 0) { error = "Selecciona una plantilla."; return; }
+        try { await Templates.GenerateAsync(templateId, raceName, raceYear); raceName = ""; await RefreshWeekAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task ContinueAsync()
+    {
+        if (detail is null) return;
+        try { var next = await Activities.ContinueActivityAsync(detail.Activity.Id); await RefreshWeekAsync(); await SelectAsync(next.Id); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private static string Format(decimal value) => value.ToString("0.##") + " h";
+    private static string Pct(decimal value, decimal total) => total <= 0 ? "0" : (value / total * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Status(ActivityStatus status) => status switch
+    {
+        ActivityStatus.Pending => "Pendiente",
+        ActivityStatus.InProgress => "En curso",
+        _ => "Completada"
+    };
+
+    private static string RecordText(WorkRecord record) => record.Kind == WorkRecordKind.Manual
+        ? $"Manual · {Format(record.Hours)}{(record.Note is not null ? " · " + record.Note : "")}"
+        : $"Sesión · {Format(record.Hours)}{(record.End is null ? " · abierta" : "")}";
+}
+
+

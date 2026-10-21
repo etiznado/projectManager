@@ -1,11 +1,27 @@
 @inherits LayoutComponentBase
 
-<AuthorizeView><Authorized Context="session">
-<nav class="form-actions"><span>@session.User.Identity?.Name</span><a href="/mi-trabajo">Mi trabajo</a>
-@if (session.User.IsInRole("Administrador")) { <a href="/administracion">Administración</a> }
-<form method="post" action="/session/logout" data-enhance="false"><AntiforgeryToken /><button type="submit" class="secondary">Cambiar usuario / Salir</button></form></nav>
-</Authorized></AuthorizeView>
-@Body
+<AuthorizeView>
+    <Authorized Context="session">
+        <header class="app-header">
+            <span class="brand">RaceIT · Project Manager</span>
+            <nav>
+                <a href="/mi-semana">Mi semana</a>
+                <a href="/initiatives">Initiatives</a>
+                @if (session.User.IsInRole("Administrador"))
+                {
+                    <a href="/administracion">Administración</a>
+                }
+                <span class="user">@session.User.Identity?.Name</span>
+                <form method="post" action="/session/logout" data-enhance="false">
+                    <AntiforgeryToken />
+                    <button type="submit" class="secondary">Salir</button>
+                </form>
+            </nav>
+        </header>
+    </Authorized>
+</AuthorizeView>
+
+<main class="app-body">@Body</main>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

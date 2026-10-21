@@ -1,0 +1,102 @@
+@page "/initiatives"
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject PanoramaService Service
+@inject IJSRuntime JS
+
+<PageTitle>Initiatives | RaceIT</PageTitle>
+<h1>Initiatives</h1>
+<div class="form-actions">
+    <button class="secondary" @onclick="Fullscreen">Pantalla completa ⛶</button>
+    <span class="muted">Actualizado @lastUpdate?.ToString("HH:mm:ss")</span>
+</div>
+@if (error is not null) { <p role="alert">@error</p> }
+
+@if (data is not null)
+{
+    <div class="metrics">
+        <div><span>Bolsa compartida</span><strong>@Format(data.WeeklyCapacityHours)/sem</strong></div>
+        <div><span>Pendientes</span><strong>@Format(data.TotalPending)</strong></div>
+        <div><span>Proyectos</span><strong>@data.ProjectCount</strong></div>
+        <div><span>En conflicto</span><strong>@data.InConflictCount</strong></div>
+    </div>
+
+    @if (data.Risk.SharedConflict)
+    {
+        <div class="banner">
+            <strong>En riesgo por carga compartida</strong>
+            <p>@Format(data.Risk.TotalPending) pendientes antes del @data.Risk.MaxDeadline?.ToString("dd MMM yyyy") frente a @Format(data.Risk.CapacityToMax) de referencia. Exceso de compromiso: @Format(data.Risk.ExcessHours).</p>
+        </div>
+    }
+
+    <section class="panel">
+        <h2>Iniciativas y proyectos</h2>
+        @if (data.Projects.Count == 0) { <p class="muted">Sin proyectos asignados.</p> }
+        @foreach (var group in groups)
+        {
+            <h3>@group.Key</h3>
+            @foreach (var project in group)
+            {
+                <p class="project-row">
+                    @project.Name
+                    <span class="muted">· @Format(project.PendingHours) pendientes @if (project.TargetDate is DateOnly d) { <text>· meta @d.ToString("dd/MM/yyyy")</text> }</span>
+                    @if (project.SharedConflict) { <span class="badge risk">Riesgo compartido</span> }
+                    else if (project.IndividuallyAtRisk) { <span class="badge risk">En riesgo</span> }
+                </p>
+            }
+        }
+    </section>
+}
+
+@code {
+    private PanoramaService.Panorama? data;
+    private string? error;
+    private DateTime? lastUpdate;
+    private readonly CancellationTokenSource stop = new();
+    private Task? timerTask;
+    private IJSObjectReference? module;
+
+    protected override async Task OnInitializedAsync() => await Refresh();
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) timerTask = RunTimer();
+        return Task.CompletedTask;
+    }
+
+    private async Task Refresh()
+    {
+        try { data = await Service.GetAsync(); lastUpdate = DateTime.Now; }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task RunTimer()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(stop.Token))
+                await InvokeAsync(async () => { await Refresh(); StateHasChanged(); });
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+    }
+
+    private async Task Fullscreen()
+    {
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./display.js");
+        await module.InvokeVoidAsync("fullscreen");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await stop.CancelAsync();
+        if (timerTask is not null) await timerTask;
+        stop.Dispose();
+        if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    }
+
+    private IEnumerable<IGrouping<string, PanoramaService.ProjectRow>> groups =>
+        data is null ? [] : data.Projects.GroupBy(p => p.InitiativeName ?? "Sin iniciativa");
+
+    private static string Format(decimal value) => value.ToString("0.##") + " h";
+}

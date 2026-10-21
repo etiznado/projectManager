@@ -1,8 +1,0 @@
-@inject NavigationManager Navigation
-<p>Selecciona un usuario para continuar. <a href="/login">Ir al acceso</a></p>
-@code {
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (firstRender) Navigation.NavigateTo("/login", forceLoad: true);
-    }
-}

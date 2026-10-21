@@ -1,142 +1,178 @@
-﻿# Progress
+# Progress
 
-## Decisiones de proyectos y TV (2026-10-19; sin implementar)
+Actualizado: 2026-10-21.
 
-El usuario pidió conservar estas decisiones en el memory bank:
+## Redefinición completa (Etapas 1 y 2)
 
-- Iniciativa opcional para un proyecto; no crear agrupaciones artificiales. Cajones de herramienta es un proyecto sin iniciativa, con actividades de diseñar, comprar material, fabricar e instalar.
-- Actividad de proyecto y actividad independiente son casos distintos. La primera usa calendario del proyecto y participa en su entrega; la segunda no requiere proyecto ni iniciativa, tiene fechas/calendario propios por detallar y no afecta entregas de proyectos.
-- Proyectos sin iniciativa conservan responsable, calendario, actividades, seguimiento y entrega estimada. Empleado puede crearlos para sí mismo; administrador puede reasignarlos o vincularlos después a una iniciativa. No cambia el permiso sobre actividades ajenas.
-- Mi trabajo reunirá proyectos asignados con/sin iniciativa y actividades independientes. Actualmente solo permite consulta y edición de actividades existentes; falta Nueva actividad y demás altas de autoservicio.
-- Conservar TV por iniciativa y añadir TV por empleado, accesible al administrador, con todo el trabajo activo asignado: proyectos con/sin iniciativa y actividades independientes. Agrupar por proyecto y mostrar fechas, avance, bloqueos y entrega estimada/estado de cada proyecto.
-- Iniciar TV por empleado sin depender de planes semanales/quincenales. Se contempla filtro de un proyecto para pantalla dedicada; ruta y diseño aún pendientes.
-- Próximo desarrollo sugerido: completar Gestionar mi trabajo (actividades propias, bloqueos, proyectos propios e independientes), contemplando estas relaciones opcionales, y TV por empleado. Esta actualización autoriza documentación, no implementación automática.
+El usuario decidió descartar el modelo anterior y reconstruir según `Project_Manager_Notas_Diseno.md`. Se eliminaron dominio, servicios, páginas, migraciones y pruebas anteriores; se borró la base `projectManager` y se recreó vacía.
 
-Estado comprobado en código: Project.InitiativeId y ProjectActivity.ProjectId siguen siendo int obligatorios; MyWork no tiene altas y TV solo ofrece /tv/{Id} por iniciativa. Última migración existente FlexibleProjectCalendars. No se cambió código, SQL ni migraciones ni se ejecutaron pruebas nuevas para documentar estos acuerdos.
+- Modelo de dominio nuevo (10 entidades): `Person`/`PersonWorkday`, `Initiative`, `Project`, `Activity`, `ActivityDependency`, `WeeklyPlan`, `PlanBlock`, `WorkRecord`, `Template`, `TemplateItem`. Sin fechas obligatorias en actividades.
+- `ProjectManagerDbContext` con restricciones CHECK, índice único `WeeklyPlan(PersonId, WeekStart)` y semilla del Administrador (Persona Id=1, jornada Lun–Sáb 7.5 h).
+- Migración `InitialModel` (20261021010653) en `src/RaceIT.ProjectManager/Migrations/`, aplicada sobre base vacía.
+- Login provisional con cookie; `WorkAccess` con roles Administrador/Usuario y métodos estáticos puros para pruebas.
+- Servicios: `PersonService`, `ProjectService`, `ActivityService` (crear actividad sin fechas + dependencias con validación de ciclos + horas pendientes) y `PlanningRules`.
+- Pantallas base: `/login`, `/mi-semana`, `/panorama`, `/administracion`.
 
-Pendientes de diseño: alcance de dependencias/recálculo sin iniciativa, calendario de independientes, vinculación posterior de proyecto a iniciativa y alcance exacto al mezclar responsables en TV. No asumir que todos los proyectos sin iniciativa pertenecen a un mismo grafo.
+Verificación: build 0 errores/0 advertencias; 19 pruebas xUnit correctas (`PlanningRulesTests`, `WorkAccessTests`). Sin verificación visual automatizada.
 
-## Primera etapa de acceso dummy
+## Etapa 3: registro de tiempo (2026-10-21)
 
-Implementado login por selección sin contraseña, cookies de sesión, roles iniciales y cinco permisos agrupados. Administrador provisional sin insertar datos; empleados desde Responsible existente. Se restringieron rutas administrativas y TV, servicios de escritura y editor por asignación vigente. Nueva vista /mi-trabajo con consulta asignada y contexto directo ajeno sin enlaces de edición. No cambia el plan original.
+- `WorkRecordService`: iniciar/pausar/reanudar sesiones, registro manual, un solo contador activo por persona (iniciar otra actividad pausa la anterior) y completar explícito que cierra sesiones abiertas.
+- `PlanningRules.SessionHours`: duración de sesión en horas decimales.
+- `ManualTimeInput`: validación de registro manual.
+- `/mi-semana`: filas seleccionables + detalle inferior con Iniciar/Reanudar/Pausar/Registrar tiempo/Completar, horas estimadas/registradas/pendientes y registros recientes.
+- Verificación: build 0/0 y 21 pruebas xUnit. Sin migración nueva (WorkRecords ya existía en InitialModel). Sin prueba visual ni interacción SQL automatizada.
 
-Pruebas: 71 xUnit correctas y build sin errores/advertencias. HTTP con SQL local verificó entrada admin y empleado, rechazo de Administración/TV para empleado y salida. Sin prueba visual automatizada. No se aplicaron migraciones ni se cambiaron registros de negocio.
+## Etapa 4: Mi semana (2026-10-21)
 
-Pendiente de la matriz: altas propias de proyectos/actividades, edición de nombre propio de proyecto, interfaz de bloqueos del empleado, habilitación de iniciativas y gestión de personas/cuentas. Historial/notificaciones, actividades independientes y períodos tampoco implementados. Registro/autenticación real expresamente diferidos por el usuario.
+- `WeekLayoutCalculator`: regla pura que coloca bloques consecutivos sobre el eje de horas laborables y calcula días, offsets y horas libres.
+- `WeeklyPlanService`: obtener/crear plan semanal, agregar/quitar bloques, editar horas y reordenar.
+- `/mi-semana`: navegación de semana, métricas (disponibles/planeadas/registradas/sin asignar), pool de actividades, timeline con barras proporcionales y línea "ahora", reordenamiento vertical y detalle inferior con registro de tiempo.
+- Reordenamiento vertical por arrastre implementado; la tabla separada y las flechas ↑/↓ se retiraron en favor del drag & drop nativo.
+- Verificación: build 0/0 y 29 pruebas xUnit. Sin migración nueva (WeeklyPlans y PlanBlocks ya existían). Sin prueba visual ni interacción SQL automatizada.
 
+## Etapa 5: panorama y riesgo (2026-10-21)
 
-Actualizado: 2026-10-19.
+- `RiskCalculator`: regla pura de capacidad compartida — compara el trabajo pendiente de los proyectos con fecha meta contra la capacidad de una sola bolsa semanal; marca conflicto compartido e indicadores individuales.
+- `PanoramaService`: carga la bolsa, proyectos e iniciativas de la persona, horas pendientes por proyecto y ejecuta el cálculo de riesgo.
+- `/panorama`: métricas (bolsa/pendientes/proyectos/en conflicto), banner de "En riesgo por carga compartida" con exceso de compromiso y grupos iniciativa→proyecto con badges.
+- Verificación: build 0/0 y 27 pruebas xUnit. Sin migración nueva. Sin prueba visual automatizada.
 
-## Implementado
+## Etapa 6: plantillas y continuaciones (2026-10-21)
 
-- Solución RaceIT.ProjectManager con Blazor Interactive Server .NET 10.
-- F5/Run and Debug en VS Code, compilación previa y apertura del navegador.
-- EF Core y conexión SQL Server con autenticación Windows, botón de comprobación.
-- Modelo inicial, migración aplicada y diez tablas de dominio.
-- Calendarios base de 40 y 45 horas.
-- Captura de iniciativas, proyectos, responsables por nombre y actividades.
-- Listado por proyecto; inicio/fin planeados y estimados, horas planeadas, estado y visibilidad.
-- Edición de actividad, fin estimado calculado y protección del plan original.
-- Modal nativo con cierre al guardar, Cancelar/X/Escape y refresco sin reiniciar selección.
-- Memory bank e instrucciones de continuidad.
+- `TemplateService`: plantillas de carreras con semilla por defecto (Antes/Durante/Después), creación/eliminación y generación de actividades al pool con título "Título — Carrera Año".
+- `TemplateRules`: regla pura de títulos generados.
+- Continuaciones: entidad `Continuation` (migración `Continuations` aplicada), `ActivityService.ContinueActivityAsync` y `ListContinuationsAsync`; botón "Continuar" en el detalle de la actividad.
+- Historial de semanas: disponible navegando con ← / → (los planes y registros persisten por semana); no hay movimiento automático de pendientes.
+- Limitación documentada: la contabilidad de horas entre continuaciones y su efecto en el riesgo queda pendiente (aplazada por el usuario).
+- Verificación: build 0/0 y 29 pruebas xUnit. Migración `Continuations` aplicada. Sin prueba visual automatizada.
 
-## Verificación realizada
+## Etapa 7: Initiatives (antes "TV") (2026-10-21)
 
-- Compilaciones sucesivas: 0 errores y 0 advertencias, incluida la versión del modal.
-- Conexión a projectManager confirmada por herramienta y usuario.
-- Tablas, historial de migración, semillas de 40/45 horas y restricciones de calendario comprobados en SQL Server.
-- EF reportó modelo sin cambios pendientes tras migración inicial.
-- Pruebas temporales: 13 h desde viernes termina sábado con calendario 45 h y lunes con calendario 40 h; fracciones, jornada exacta, rechazo de domingo y duración cero.
-- Escritura/lectura de iniciativa, proyecto y actividad en transacción revertida.
-- Pruebas del editor: plan intacto, pronóstico recalculado, estados/fechas inválidos rechazados, actualización SQL y retiro de responsable; transacción revertida.
-- /administracion y app.css respondieron HTTP 200 con formularios/estilos esperados antes del cambio a modal.
-- Usuario confirmó captura y edición funcionando.
-- Suite persistente: tests/RaceIT.ProjectManager.Tests, 66 pruebas xUnit (cronograma, milestones, bloqueos, TV, tiempos continuos y proyectos flexibles). Las pruebas anteriores del editor/calendario y las de integración SQL son programas temporales. Sin verificación visual automatizada del modal.
+- La vista de solo lectura de iniciativas y proyectos se llama **Initiatives** (en inglés, por decisión del usuario), ruta `/initiatives`.
+- Reutiliza `PanoramaService`; auto-refresco cada 30 s, botón de pantalla completa (`wwwroot/display.js`) y sello de última actualización.
+- Se eliminó `/panorama` y el enlace del menú pasó a "Initiatives".
+- Cuentas/roles: cubiertos por el login provisional con roles Administrador/Usuario y el alta de personas por el administrador; el login real sigue diferido.
+- Verificación: build 0/0 y 29 pruebas xUnit. Sin prueba visual automatizada.
 
-## Pendiente
+Pendientes diferidos (no bloquean): login real, drag & drop del pool, contabilidad de continuaciones, timeline visual con líneas punteadas y riesgo semanal.
 
-- Dependencias y propagación implementadas; queda ruta crítica, holguras y diagnóstico de conflictos con ejecución real.
-- Milestones y bloqueos implementados; pendiente propagación de riesgo hacia sucesoras y cálculo de holguras.
-- Dashboard TV implementado; revisión visual y validación del refresco en navegador del usuario pendientes.
-- Editar iniciativas y calendarios detallados; feriados y excepciones. Proyectos ya tienen edición.
-- Autenticación y concurrencia.
-- Duraciones planeada y estimada ya se muestran con su unidad (horas laborables o días naturales).
-- Publicación/hosting y aprobación del plan, fuera del alcance actual.
+## Datos de prueba (2026-10-21)
 
-No se han creado commits ni publicado cambios a GitHub durante este trabajo. Comprobar git status antes de asumir el estado actual del repositorio.
+`DataSeeder` corre al arrancar en Development (idempotente): renombra el admin a **Edgar**, crea al empleado **Pablo** y, si no hay iniciativas, siembra Data Logger (PCB, Case interno, Selección de batería), el proyecto independiente Cajones de herramientas, actividades con dependencias, plan semanal, registros de tiempo y una continuación. Verificado con arranque local (login 200 y log "Datos de prueba sembrados").
 
-## Fase de dependencias completada
+## Arrastrar y soltar en Mi semana (2026-10-20)
 
-- Modal permite seleccionar actividades predecesoras de cualquier proyecto de la misma iniciativa; vista previa del inicio y fin calculados.
-- Grafo validado por orden topológico: rechaza ciclos, autorreferencias y referencias fuera de la iniciativa.
-- Servicio ActivityPlanningService guarda actividad, vínculos y pronóstico de todas las actividades de la iniciativa en una transacción Serializable.
-- Motor conserva horas parciales por jornada y calendario receptor; sin asignación de recursos ni horarios de reloj.
-- RequestedStart separa restricción manual de EstimatedStart calculado para poder adelantar al retirar dependencias.
-- EstimatedStartHour y EstimatedFinishHour conservan desplazamientos internos dentro de la jornada.
-- Migración DependencyScheduling inicializa RequestedStart desde EstimatedStart existente. No modifica plan original.
-- Lista muestra predecesoras; resumen compara máximo fin real/estimado contra objetivo en días naturales. Todas las actividades participan, aunque estén ocultas en TV.
-- 14 pruebas xUnit pasaron; prueba temporal SQL verificó cambios de predecesora, propagación, eliminación de vínculo, rechazo de ciclo/otra iniciativa y rollback de errores. Datos temporales limpiados por GUID.
-- HTTP 200 de administración y editor con actividad existente; modelo sin cambios pendientes. No se verificó interacción visual automatizada.
+- Implementado: arrastre nativo de tarjetas del pool a una fila del timeline/tabla (inserta antes) o a la zona final, incluso en un plan vacío. Usa las horas pendientes, o 1 h si se requiere reestimar; las horas siguen siendo editables.
+- Implementado: reordenamiento vertical de bloques arrastrando la barra o el indicador ⠿ de la tabla. Conserva botones Agregar y ↑/↓ como alternativa sin arrastre. El eje horizontal se recalcula por orden y horas; no cambia sesiones ni registros.
+- WeeklyPlanService inserta el nuevo bloque y ajusta posiciones en un solo SaveChanges; rechaza destinos inexistentes y órdenes con IDs duplicados. Sin migraciones ni datos de ejemplo nuevos.
+- Verificado: build sin errores/advertencias y 29 pruebas existentes correctas. Pendiente: probar interacción de arrastre en navegador y persistencia SQL en uso real; no se afirma validación visual.
+- Pendientes restantes: login real, contabilidad de continuaciones, timeline de Initiatives con líneas punteadas y riesgo semanal.
 
-## Fase de milestones completada
+### Pool de la semana seleccionada (2026-10-20)
 
-- MilestonePanel integrado por proyecto; creación/edición en modal y selección de actividades de toda la iniciativa.
-- Requiere nombre, objetivo y al menos una actividad válida. Estimado calculado desde último fin requerido.
-- Listado muestra objetivo, estimado, cumplimiento real, requisitos completados, estado y confirmador.
-- Confirmación manual con fecha y nombre de quien acepta; exige todas las actividades completadas, fin real no posterior al cumplimiento y fecha no futura.
-- Definición confirmada protegida hasta reabrir. Reapertura manual y automática si un requisito deja de estar completado o se modifica a un fin real posterior a la confirmación.
-- ActivityPlanningService actualiza milestones en la misma transacción que el cronograma. Resumen de iniciativa incluye fines estimados/reales de milestones además de actividades.
-- Sin cambio de esquema: reutiliza Milestones, MilestoneRequirements, ApprovedDate y ApprovedById.
-- 25 pruebas persistentes pasaron. Integración temporal SQL y renderizado estático del panel pasaron; datos temporales limpiados por GUID. Sin verificación visual automatizada de interacción.
+El pool excluye actividades que ya tienen al menos un bloque en el plan de la semana seleccionada. Al quitar el último bloque, la actividad abierta vuelve al pool; bloques en otras semanas no la ocultan. Se aplica al refrescar después de agregar, quitar o cambiar de semana.
 
-## Fase de bloqueos completada
+### Filas integradas del timeline (2026-10-20)
 
-- BlockerPanel por proyecto en administración, modales crear/editar con actividad, descripción y responsable opcional. Resolver/reabrir y filtro para ver resueltos.
-- Servicio serializable limita operaciones al proyecto y rechaza actividades completadas para crear/reabrir. Resolver registra timestamp y conserva el cronograma.
-- ActivityPlanningService rechaza completar actividades con bloqueos abiertos. MilestoneService rechaza confirmar requisitos bloqueados.
-- Actividades muestran ejecución, salud del cronograma y conteo de bloqueos por separado. Se alerta el total abierto en la iniciativa. Milestones marcan riesgo por bloqueos requeridos y priorizan atraso si la fecha estimada excede objetivo.
-- Modal de actividad muestra aviso de bloqueos abiertos. No se generan retrasos arbitrarios ni se cambian fechas al crear/resolver un bloqueo.
-- Se corrigieron claves de componentes hermanos para distinguir paneles/modales por tipo e ID.
-- Sin migración: se usa Blockers existente.
-- 35 pruebas xUnit pasaron y programa temporal SQL verificó persistencia, edición, alcance, resolución/reapertura, protección de actividad/milestone y render estático del panel. Datos de prueba limpiados por GUID; sin prueba visual automatizada.
+Por solicitud del usuario se retiró la tabla inferior, la columna editable Horas y los controles ↑/↓. Cada actividad y su proyecto se muestran a la izquierda de su barra, alineados en una misma fila como el render expandido. La barra muestra solo horas; selección desde título/barra abre el mismo detalle. Se conserva quitar del plan y reordenamiento por arrastre. Las horas planeadas se conservan en datos, pero ya no tienen editor en esta vista. Cuadrícula diaria y encabezado comparten el eje proporcional. Build verificado sin errores/advertencias; revisión visual en navegador pendiente.
 
-## Dashboard TV implementado
+### Ancho completo (2026-10-20)
 
-- /tv/{Id}, acceso Ver en TV en administración sin perder selección (nueva pestaña).
-- Encabezado, objetivo, entrega real/estimada, desviación y estado general. Datos reales de SQL; sin datos ilustrativos insertados.
-- SVG con barras agrupadas por proyecto, baseline punteada, HOY, milestones y conectores dentro de la página. Aviso de dependencias fuera de vista.
-- Timeline rota 8 filas cada 15 segundos. Milestones y bloqueos pendientes rotan dos por tarjeta. Se actualizan consultas cada 30 segundos.
-- Mantiene última lectura ante errores con advertencia de desactualización. Timer cancelado al salir. Pantalla completa mediante API del navegador con F11 como alternativa.
-- Actividades ocultas participan en cálculos y alertas. Riesgo global alerta por bloqueos o estimados vencidos; no calcula ruta crítica.
-- 46 pruebas xUnit pasaron. Programa temporal de integración SQL y HtmlRenderer verificó dashboard y segunda página, recarga y caso inexistente; fixtures limpiados. Sin verificación visual de navegador, fullscreen ni timer real en browser por indisponibilidad de CUA.
-- Sin migración nueva.
+Se eliminó el máximo de 1180 px del contenedor principal compartido (.app-body). Las páginas aprovechan el 100% del ancho disponible conservando el padding lateral de 1.25rem. Cambio CSS comprobado en fuente; revisión visual en navegador pendiente.
 
-## Tiempos de proveedor implementados
+### Pool sin botón Agregar al plan (2026-10-20)
 
-- Captura y edición distinguen horas laborables de días naturales continuos. Se aceptan días decimales con paso de 0.01.
-- Plan y pronóstico tienen tipos separados. La lista muestra Duración planeada y Duración estimada con sus unidades.
-- Motor usa 24 h/día para espera, conserva horas parciales entre tipos y aplica calendario receptor al volver a trabajo.
-- Selector de tipo mantiene el valor numérico mostrado; se debe revisar duración al cambiar unidad.
-- TV indica Espera y usa fracciones de día de 24 h comunes en barras para alinear dependencias de tipos distintos; baseline usa tipo/duración originales.
-- Migración ActivityDurationTypes aplicada con default laboral para registros existentes y restricción de valores. Fechas/duraciones anteriores verificadas intactas.
-- 56 pruebas pasaron. Integración SQL y HTTP comprobó cambios de plazo y tipo, baseline conservado y formularios/TV. Datos de prueba limpiados. Modelo sin cambios pendientes; sin verificación visual automatizada.
+Por solicitud del usuario se eliminó el botón Agregar al plan de las tarjetas y su manejador sin uso. La incorporación al plan se realiza mediante arrastre; pulsar el título sigue abriendo el detalle. Cambio revisado en fuente; sin verificación visual nueva.
 
-## Proyectos editables y flexibles
+### Columna Actividad más compacta (2026-10-20)
 
-- Botón Editar proyecto visible al seleccionar en dropdown. Modal con nombre, responsable y calendario, cierre/cancelación y refresco sin perder selección.
-- ProjectService guarda en transacción y recalcula iniciativa/milestones al cambiar calendario.
-- Calendario Flexible / sin horario sin filas horarias. Actividades nuevas usan inicio/fin manuales por defecto; días naturales disponibles para proveedores.
-- Tipo ManualDates permite cualquier día con cero horas; RequestedFinish conserva el intervalo solicitado antes de dependencias. La propagación desplaza por días conservando ese intervalo.
-- Conversión a flexible transforma solo estimaciones laborales, protege baseline y reales. Volver a horario conserva manuales hasta cambio explícito.
-- Migración FlexibleProjectCalendars aplicada y datos existentes verificados intactos. 66 pruebas pasaron. Integración SQL, modal estático y HTTP de actividad verificados; fixtures limpiados. Sin verificación visual automatizada.
+El encabezado del timeline ahora es Actividad. Su columna se redujo del 32% al 25%, con mínimo de 160 px, dejando más espacio al eje semanal. Cambio revisado en fuente; revisión visual pendiente.
 
-## Planificación posterior: usuarios y trabajo por períodos
+### Filas más compactas (2026-10-20)
 
-Se documentaron acuerdos en users-and-work-planning.md. No implementados: autenticación, roles/permisos, historial, notificaciones, actividades independientes ni planes por empleado. El usuario pidió planear antes de implementar y luego autorizó únicamente esta documentación.
+Se redujo la altura mínima de las filas del timeline de Mi semana de 88 a 72 px por solicitud del usuario. Cambio CSS revisado en fuente; revisión visual pendiente.
 
-Revisión de estructura realizada en modo lectura: Responsible no es usuario autenticado; ProjectId de actividad obligatorio; hay escrituras y lecturas directas en componentes que deberán centralizarse/limitarse para permisos. Los recálculos pueden afectar trabajo ajeno dentro de la iniciativa.
+### Soltar dentro de Actividad (2026-10-20)
 
-Visibilidad acordada: empleado consulta trabajo asignado y dependencias directas en ambos sentidos, sin editar trabajo ajeno ni acceso transitivo/global. Cambios propios sin aprobación previa y notificaciones al administrador solo para eventos relevantes, agrupando recálculos.
+Se retiró el recuadro externo para agregar al final. El encabezado Actividad y el espacio vacío bajo sus filas aceptan actividades/bloques para agregarlos al final; las filas existentes conservan insertar antes. El espacio final forma parte de la cuadrícula, incluso en semana vacía. Revisión visual pendiente.
 
-En esta fase documental no se modificó código ni SQL, no se aplicaron migraciones ni se ejecutaron nuevamente las pruebas. Próximo paso: terminar matriz de permisos y decisiones pendientes del documento de planificación.
+### Cabecera compacta de Mi semana (2026-10-20)
 
+Se retiró el título visible Mi semana (se conserva PageTitle). Navegación semanal y métricas comparten una sola fila sobre pool/timeline; la barra permite desplazamiento horizontal si el ancho no alcanza. Compilación verificada sin errores ni advertencias; revisión visual pendiente.
+
+### Timeline sin título ni instrucción (2026-10-20)
+
+Se retiraron el título Plan de la semana y el texto de ayuda de arrastre del panel del timeline. La cuadrícula comienza directamente con Actividad y los días. Cambio de marcado revisado en fuente; sin nueva verificación visual.
+
+### Altura disponible y scroll de paneles (2026-10-20)
+
+Mi semana usa el alto restante del viewport después de la cabecera, navegación y métricas. Pool y timeline se estiran a la misma altura, con scroll vertical independiente al desbordarse. La cuadrícula llena el panel aun sin bloques: el espacio final de Actividad crece para aceptar arrastres. Encabezados del timeline fijos durante scroll. Plantillas y detalle siguen debajo del área principal, accesibles desplazando la página. Build sin errores/advertencias; verificación visual e interacción en navegador pendientes.
+
+### Encabezados compactos del timeline (2026-10-20)
+
+Se redujo el padding vertical de Actividad y los días, el interlineado de los días y la separación de sus horas. La fila conserva altura automática según el contenido. Cambio CSS revisado en fuente; sin verificación visual nueva.
+
+### Actividades con filas compactas (2026-10-20)
+
+Se redujo el mínimo de las filas de actividades a 44 px y el padding/interlineado de su contenido. Crecen cuando el título requiere más líneas; barras más compactas centradas. El espacio final sigue llenando el alto restante. Cambio revisado en fuente; revisión visual pendiente.
+
+### Timeline sin scroll interno (2026-10-20)
+
+Por solicitud del usuario, el panel del timeline deja de tener scroll interno: conserva el alto mínimo disponible y se extiende hacia abajo cuando sus actividades lo requieren. La página permite recorrer ese contenido. El pool conserva su alto disponible y scroll independiente. Cambio CSS revisado en fuente; comprobación visual pendiente.
+
+### Compactación completa del timeline (2026-10-20)
+
+Encabezado y actividades usan tracks max-content para evitar que las filas automáticas absorban altura sobrante. Actividades con mínimo de 40 px y menor padding, interlineado y tipografía; encabezado también compacto. Solo la fila vacía final absorbe el alto libre del panel. Sin scroll interno del timeline. Verificación visual pendiente.
+
+### Corrección de compactación (2026-10-20)
+
+Se restauraron el tamaño anterior de barras y la tipografía de encabezados/actividades. Se conserva únicamente la compactación del espacio interior y el ajuste de filas al contenido, sin estirarlas. Cambio CSS revisado en fuente; sin verificación visual nueva.
+
+### Padding de 2 px en timeline (2026-10-20)
+
+Encabezados y celdas de Actividad usan 2 px de padding. Se eliminaron el mínimo de altura de actividad, padding anidado del título y separación adicional del proyecto. Barras conservan su tamaño; su pista reserva su altura más 4 px. Tracks explícitos se generan como una única cadena de estilo. Revisión visual pendiente.
+
+### Scroll del pool con tema oscuro (2026-10-20)
+
+Barra del pool delgada, con pista del color del panel y control del color de los bordes; contraste mayor al pasar el mouse donde el navegador admite ese estilo. Conserva desplazamiento con rueda y touchpad. CSS scrollbar-width/color y fallback WebKit. Cambio revisado en fuente; revisión visual pendiente.
+
+### Pool siempre igual al timeline (2026-10-20)
+
+Se eliminó el máximo de altura del pool basado en viewport. El pool usa contención de tamaño y stretch: su contenido no determina la altura compartida, que sigue al timeline, incluso cuando este crece hacia abajo. Conserva scroll interno y estilo oscuro. Cambio CSS revisado en fuente; verificación visual pendiente.
+
+### Icono del pool junto al título (2026-10-20)
+
+El indicador de arrastre de cada tarjeta del pool comparte línea con el nombre de actividad mediante una cabecera flex. El título puede envolver si no cabe. Cambio de marcado/CSS revisado en fuente; revisión visual pendiente.
+
+### Pool colapsable (2026-10-20)
+
+Mi semana incorpora enlace visual << en el encabezado del pool y pestaña >> para expandirlo cuando está cerrado, con nombres accesibles. El timeline ocupa el espacio liberado; el estado local se mantiene al refrescar datos/cambiar semana durante la misma instancia de página. No se persiste entre recargas. Revisión visual pendiente.
+
+### Padding del timeline a 5 px (2026-10-20)
+
+Se aumentó el padding compartido de encabezados/celdas del timeline de 2 a 5 px; la pista reserva 10 px adicionales alrededor de la barra sin cambiar su tamaño. Cambio CSS revisado en fuente; revisión visual pendiente.
+
+### Iconos para colapsar el pool (2026-10-20)
+
+Los controles del pool usan SVG de doble chevrón en lugar del texto >>/<<, conservando etiquetas accesibles y comportamiento. Cambio de marcado/CSS revisado en fuente; revisión visual pendiente.
+
+### Jornada confirmada de 45 h (2026-10-20)
+
+El usuario confirmó 8 h de lunes a viernes, 5 h el sábado y 0 el domingo. Sustituye la jornada ilustrativa de 7.5 h/día. PersonService aplica esa distribución para nuevas personas con capacidad 45 h; otras capacidades conservan su reparto anterior. DataSeeder reutiliza esa regla; semilla del modelo actualizada. Migración WorkweekEightFive cambia jornadas anteriores de 7.5 h en personas de capacidad 45 h sin modificar bloques ni registros. Aplicada en SQL local mediante transacción y registrada en __EFMigrationsHistory; lectura posterior confirmó Edgar/Pablo con 8/8/8/8/8/5/0. Build 0 errores/advertencias y 29 pruebas existentes correctas; revisión visual pendiente.
+
+### Etiqueta Completadas (2026-10-20)
+
+Por solicitud del usuario, la métrica Registradas (total) ahora se titula Completadas. Solo cambió la etiqueta: sigue sumando las horas registradas de todas las actividades/semanas, no únicamente actividades terminadas ni la semana seleccionada. Cambio de texto revisado en fuente.
+
+### Orden de métricas (2026-10-20)
+
+Las métricas de Mi semana se muestran en el orden solicitado: Disponibles, Planeadas, Sin asignar, Completadas. Solo cambia el orden visual; cálculos sin cambios. Revisión en fuente, sin verificación visual nueva.
+
+### Colores de métricas (2026-10-20)
+
+Valores de Planeadas en azul, Sin asignar en amarillo y Completadas en verde, usando los colores existentes del tema. Disponibles conserva su color. Cambio de marcado/CSS revisado en fuente; revisión visual pendiente.
+
+### Relleno verde en barras (2026-10-20)
+
+Barras conservan longitud/etiqueta de horas planeadas y añaden relleno verde de tiempo registrado / estimación total actual de la actividad (limitado a 0–100%); actividad completada explícitamente llena la barra. Múltiples bloques de la misma actividad usan la misma proporción. Es indicador de consumo de esfuerzo, no medición independiente de avance físico ni finalización automática; se conserva la regla de revisar estimación al agotarse. Los datos actuales no incluyen porcentaje de avance físico. Verificación visual pendiente.

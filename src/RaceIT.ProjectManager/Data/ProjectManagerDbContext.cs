@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RaceIT.ProjectManager.Domain;
 
 namespace RaceIT.ProjectManager.Data;
@@ -6,69 +6,74 @@ namespace RaceIT.ProjectManager.Data;
 public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbContext> options)
     : DbContext(options)
 {
+    public DbSet<Person> People => Set<Person>();
+    public DbSet<PersonWorkday> PersonWorkdays => Set<PersonWorkday>();
     public DbSet<Initiative> Initiatives => Set<Initiative>();
     public DbSet<Project> Projects => Set<Project>();
-    public DbSet<ProjectActivity> Activities => Set<ProjectActivity>();
+    public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityDependency> ActivityDependencies => Set<ActivityDependency>();
-    public DbSet<WorkCalendar> WorkCalendars => Set<WorkCalendar>();
-    public DbSet<WorkCalendarDay> WorkCalendarDays => Set<WorkCalendarDay>();
-    public DbSet<Milestone> Milestones => Set<Milestone>();
-    public DbSet<MilestoneRequirement> MilestoneRequirements => Set<MilestoneRequirement>();
-    public DbSet<Responsible> Responsibles => Set<Responsible>();
-    public DbSet<Blocker> Blockers => Set<Blocker>();
+    public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
+    public DbSet<PlanBlock> PlanBlocks => Set<PlanBlock>();
+    public DbSet<WorkRecord> WorkRecords => Set<WorkRecord>();
+    public DbSet<Template> Templates => Set<Template>();
+    public DbSet<TemplateItem> TemplateItems => Set<TemplateItem>();
+    public DbSet<Continuation> Continuations => Set<Continuation>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
-        model.Entity<WorkCalendarDay>().HasKey(x => new { x.WorkCalendarId, x.DayOfWeek });
+        model.Entity<PersonWorkday>().HasKey(x => new { x.PersonId, x.DayOfWeek });
         model.Entity<ActivityDependency>().HasKey(x => new { x.PredecessorId, x.SuccessorId });
-        model.Entity<ActivityDependency>().HasOne(x => x.Predecessor).WithMany().HasForeignKey(x => x.PredecessorId);
-        model.Entity<ActivityDependency>().HasOne(x => x.Successor).WithMany().HasForeignKey(x => x.SuccessorId);
-        model.Entity<MilestoneRequirement>().HasKey(x => new { x.MilestoneId, x.ActivityId });
-        model.Entity<MilestoneRequirement>().HasOne(x => x.ApprovedBy).WithMany().HasForeignKey(x => x.ApprovedById);
+        model.Entity<ActivityDependency>()
+            .HasOne(x => x.Predecessor).WithMany(a => a.Outgoing).HasForeignKey(x => x.PredecessorId);
+        model.Entity<ActivityDependency>()
+            .HasOne(x => x.Successor).WithMany(a => a.Incoming).HasForeignKey(x => x.SuccessorId);
 
-        model.Entity<WorkCalendarDay>().ToTable(t =>
+        model.Entity<Continuation>()
+            .HasOne(x => x.FromActivity).WithMany(a => a.ContinuationsFrom).HasForeignKey(x => x.FromActivityId);
+        model.Entity<Continuation>()
+            .HasOne(x => x.ToActivity).WithMany(a => a.ContinuationsTo).HasForeignKey(x => x.ToActivityId);
+
+        model.Entity<WeeklyPlan>().HasIndex(x => new { x.PersonId, x.WeekStart }).IsUnique();
+
+        model.Entity<PersonWorkday>().ToTable(t =>
         {
-            t.HasCheckConstraint("CK_CalendarDay_Hours", "[WorkingHours] >= 0 AND [WorkingHours] <= 24");
-            t.HasCheckConstraint("CK_CalendarDay_Day", "[DayOfWeek] >= 0 AND [DayOfWeek] <= 6");
+            t.HasCheckConstraint("CK_PersonWorkday_Hours", "[WorkingHours] >= 0 AND [WorkingHours] <= 24");
+            t.HasCheckConstraint("CK_PersonWorkday_Day", "[DayOfWeek] >= 0 AND [DayOfWeek] <= 6");
         });
+        model.Entity<Person>().ToTable(t => t.HasCheckConstraint("CK_Person_Capacity", "[WeeklyCapacityHours] >= 0"));
+        model.Entity<Activity>().ToTable(t => t.HasCheckConstraint("CK_Activity_Estimate", "[CurrentEstimateHours] >= 0"));
         model.Entity<ActivityDependency>().ToTable(t => t.HasCheckConstraint("CK_Dependency_NotSelf", "[PredecessorId] <> [SuccessorId]"));
-        model.Entity<ProjectActivity>().ToTable(t =>
-        {
-            t.HasCheckConstraint("CK_Activity_Duration", "(([PlannedDurationType] = 2 AND [PlannedDurationHours] = 0) OR ([PlannedDurationType] <> 2 AND [PlannedDurationHours] > 0)) AND (([EstimatedDurationType] = 2 AND [EstimatedDurationHours] = 0) OR ([EstimatedDurationType] <> 2 AND [EstimatedDurationHours] > 0))");
-            t.HasCheckConstraint("CK_Activity_PlanDates", "[PlannedFinish] >= [PlannedStart]");
-            t.HasCheckConstraint("CK_Activity_EstimatedDates", "[EstimatedFinish] >= [EstimatedStart]");
-            t.HasCheckConstraint("CK_Activity_ActualDates", "[ActualFinish] IS NULL OR ([ActualStart] IS NOT NULL AND [ActualFinish] >= [ActualStart])");
-            t.HasCheckConstraint("CK_Activity_DurationType", "[PlannedDurationType] IN (0,1,2) AND [EstimatedDurationType] IN (0,1,2)");
-            t.HasCheckConstraint("CK_Activity_Status", "[Status] IN (0,1,2)");
-        });
-        model.Entity<Blocker>().ToTable(t => t.HasCheckConstraint("CK_Blocker_Dates", "[ResolvedAt] IS NULL OR [ResolvedAt] >= [CreatedAt]"));
+        model.Entity<PlanBlock>().ToTable(t => t.HasCheckConstraint("CK_PlanBlock_Hours", "[PlannedHours] > 0"));
+        model.Entity<WorkRecord>().ToTable(t => t.HasCheckConstraint("CK_WorkRecord_Hours", "[Hours] >= 0"));
 
-        model.Entity<WorkCalendar>().HasData(
-            new WorkCalendar { Id = 1, Name = "Lunes a viernes - 40 horas" },
-            new WorkCalendar { Id = 2, Name = "Lunes a sabado - 45 horas" },
-            new WorkCalendar { Id = 3, Name = "Flexible / sin horario", IsFlexible = true });
-        var calendarDays = new List<WorkCalendarDay>();
-        for (var calendarId = 1; calendarId <= 2; calendarId++)
+        // Cuenta administradora inicial; jornada por defecto repartida de lunes a sábado.
+        model.Entity<Person>().HasData(new Person
         {
-            foreach (var day in Enum.GetValues<DayOfWeek>())
+            Id = 1,
+            Name = "Administrador",
+            Role = PersonRole.Admin,
+            PlanningMode = PlanningMode.ByDeliverables,
+            WeeklyCapacityHours = 45,
+            IsActive = true
+        });
+        var workdays = new List<PersonWorkday>();
+        foreach (var day in Enum.GetValues<DayOfWeek>())
+        {
+            workdays.Add(new PersonWorkday
             {
-                calendarDays.Add(new WorkCalendarDay
-                {
-                    WorkCalendarId = calendarId,
-                    DayOfWeek = day,
-                    WorkingHours = day == DayOfWeek.Sunday ? 0
-                        : day == DayOfWeek.Saturday ? (calendarId == 2 ? 5 : 0) : 8
-                });
-            }
+                PersonId = 1,
+                DayOfWeek = day,
+                WorkingHours = day == DayOfWeek.Sunday ? 0 : day == DayOfWeek.Saturday ? 5m : 8m
+            });
         }
-        model.Entity<WorkCalendarDay>().HasData(calendarDays);
+        model.Entity<PersonWorkday>().HasData(workdays);
 
         foreach (var entity in model.Model.GetEntityTypes())
         {
             foreach (var property in entity.GetProperties())
             {
                 if (property.ClrType == typeof(string))
-                    property.SetMaxLength(property.Name == "Description" ? 2000 : 200);
+                    property.SetMaxLength(property.Name is "Description" or "Note" ? 2000 : 200);
                 if (property.ClrType == typeof(decimal))
                 {
                     property.SetPrecision(10);
@@ -80,6 +85,3 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
         }
     }
 }
-
-
-

@@ -8,19 +8,35 @@ public enum WorkPermission { ReadOwnWork, ManageOwnWork, ManageProjects, ReadAll
 public sealed class WorkAccess(AuthenticationStateProvider authentication)
 {
     public async Task<ClaimsPrincipal> UserAsync() => (await authentication.GetAuthenticationStateAsync()).User;
+
+    public static bool IsAdmin(ClaimsPrincipal user) => user.IsInRole("Administrador");
+    public static int? PersonIdOf(ClaimsPrincipal user) =>
+        int.TryParse(user.FindFirst("PersonId")?.Value, out var id) ? id : null;
     public static bool Allows(ClaimsPrincipal user, WorkPermission permission) =>
-        user.Identity?.IsAuthenticated == true && (user.IsInRole("Administrador") ||
-            (user.IsInRole("Empleado") && permission is WorkPermission.ReadOwnWork or WorkPermission.ManageOwnWork));
-    public async Task RequireAsync(WorkPermission permission)
+        user.Identity?.IsAuthenticated == true &&
+        (IsAdmin(user) ||
+         (user.IsInRole("Usuario") && permission is WorkPermission.ReadOwnWork or WorkPermission.ManageOwnWork));
+
+    public async Task<bool> IsAuthenticatedAsync() => (await UserAsync()).Identity?.IsAuthenticated == true;
+    public async Task<bool> IsAdminAsync() => IsAdmin(await UserAsync());
+    public async Task<int?> PersonIdAsync() => PersonIdOf(await UserAsync());
+
+    public async Task RequireAuthenticatedAsync()
     {
-        if (!Allows(await UserAsync(), permission)) throw new ArgumentException("No tienes permiso para esta operación.");
+        if (!await IsAuthenticatedAsync()) throw new UnauthorizedAccessException("Inicia sesión para continuar.");
     }
-    public async Task<bool> IsAdminAsync() => Allows(await UserAsync(), WorkPermission.ManageProjects);
-    public async Task<int?> PersonIdAsync() => int.TryParse((await UserAsync()).FindFirstValue("ResponsibleId"), out var id) ? id : null;
-    public async Task RequireActivityAsync(int? responsibleId)
+
+    public async Task RequireAdminAsync()
     {
-        await RequireAsync(WorkPermission.ManageOwnWork);
-        if (!await IsAdminAsync() && (responsibleId is null || responsibleId != await PersonIdAsync()))
-            throw new ArgumentException("La actividad no está asignada a ti.");
+        if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Esta operación requiere permisos de administrador.");
+    }
+
+    public async Task RequireOwnAsync(int? personId)
+    {
+        await RequireAuthenticatedAsync();
+        if (await IsAdminAsync()) return;
+        var current = await PersonIdAsync();
+        if (personId is null || current is null || current != personId)
+            throw new UnauthorizedAccessException("El trabajo no está asignado a ti.");
     }
 }

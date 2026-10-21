@@ -2,8 +2,8 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
 <NotAuthorized Context="auth">
-@if (auth.User.Identity?.IsAuthenticated == true) { <p>No tienes permiso para esta página. <a href="/mi-trabajo">Mi trabajo</a></p> }
-else { <RequireLogin /> }
+@if (auth.User.Identity?.IsAuthenticated == true) { <p>No tienes permiso para esta página. <a href="/mi-semana">Mi semana</a></p> }
+else { <p><a href="/login">Iniciar sesión</a></p> }
 </NotAuthorized>
 </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

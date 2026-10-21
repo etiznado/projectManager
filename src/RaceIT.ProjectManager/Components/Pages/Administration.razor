@@ -1,317 +1,270 @@
-@attribute [Authorize(Roles = "Administrador")]
 @page "/administracion"
-@using Microsoft.EntityFrameworkCore
-@using RaceIT.ProjectManager.Data
-@using RaceIT.ProjectManager.Domain
-@using RaceIT.ProjectManager.Services
-@using RaceIT.ProjectManager.Components.Shared
-@inject IDbContextFactory<ProjectManagerDbContext> DbFactory
-@inject ILogger<Administration> Logger
+@attribute [Authorize(Roles = "Administrador")]
+@inject PersonService People
+@inject ProjectService Projects
+@inject ActivityService Activities
+@inject TemplateService Templates
 
 <PageTitle>Administración | RaceIT</PageTitle>
-<header class="page-header"><div><span class="eyebrow">RACEIT · PROJECT MANAGER</span><h1>Administración</h1><p>Organiza una iniciativa, sus proyectos y actividades.</p></div><div class="form-actions">@if (initiativeId > 0) { <a class="tv-open-link" href="@($"/tv/{initiativeId}")" target="_blank" rel="noopener">Ver en TV ↗</a> }<a href="/">Inicio</a></div></header>
-@if (!string.IsNullOrEmpty(message)) { <div class="notice" role="status">@message</div> }
-@if (loading) { <p>Cargando proyectos...</p> }
-else
-{
-<div class="planning-grid">
+<h1>Administración</h1>
+@if (error is not null) { <p role="alert">@error</p> }
+
 <section class="panel">
-    <h2>1. Iniciativa</h2>
-    <label for="initiative-select">Iniciativa activa</label>
-    <select id="initiative-select" value="@initiativeId" @onchange="SelectInitiative" disabled="@busy">
-        <option value="0">Selecciona una iniciativa</option>
-        @foreach (var item in initiatives) { <option value="@item.Id">@item.Name</option> }
-    </select>
-    @if (CurrentInitiative is not null) { <p class="muted">Objetivo: @CurrentInitiative.TargetDate.ToString("dd/MM/yyyy")</p> }
+    <h2>Personas</h2>
+    <ul>
+    @foreach (var person in people)
+    {
+        <li>@person.Name · @(person.Role == PersonRole.Admin ? "Administrador" : "Usuario") · @person.WeeklyCapacityHours.ToString("0.##") h/sem</li>
+    }
+    </ul>
+    <h3>Nueva persona</h3>
+    <EditForm Model="personInput" OnValidSubmit="CreatePerson" FormName="person">
+        <DataAnnotationsValidator /><ValidationSummary />
+        <label>Nombre<InputText @bind-Value="personInput.Name" /></label>
+        <label>Correo<InputText @bind-Value="personInput.Email" /></label>
+        <label>Rol
+            <InputSelect @bind-Value="personInput.Role">
+                <option value="@PersonRole.User">Usuario</option>
+                <option value="@PersonRole.Admin">Administrador</option>
+            </InputSelect>
+        </label>
+        <label>Forma de planear
+            <InputSelect @bind-Value="personInput.PlanningMode">
+                <option value="@PlanningMode.Weekly">Semanal</option>
+                <option value="@PlanningMode.ByDeliverables">Por entregas</option>
+            </InputSelect>
+        </label>
+        <label>Bolsa semanal (horas)<InputNumber @bind-Value="personInput.WeeklyCapacityHours" step="0.5" /></label>
+        <button type="submit">Crear persona</button>
+    </EditForm>
+</section>
+
+<section class="panel">
+    <h2>Iniciativas</h2>
+    <ul>
+    @foreach (var initiative in initiatives)
+    {
+        <li>@initiative.Name @if (initiative.TargetDate is DateOnly d) { <span class="muted">· Meta @d.ToString("dd/MM/yyyy")</span> }</li>
+    }
+    </ul>
     <h3>Nueva iniciativa</h3>
     <EditForm Model="initiativeInput" OnValidSubmit="CreateInitiative" FormName="initiative">
         <DataAnnotationsValidator /><ValidationSummary />
-        <fieldset disabled="@busy">
         <label>Nombre<InputText @bind-Value="initiativeInput.Name" /></label>
         <label>Descripción<InputTextArea @bind-Value="initiativeInput.Description" /></label>
-        <label>Entrega objetivo<InputDate @bind-Value="initiativeInput.TargetDate" /></label>
+        <label>Fecha meta (opcional)<InputDate @bind-Value="initiativeInput.TargetDate" /></label>
         <button type="submit">Crear iniciativa</button>
-        </fieldset>
     </EditForm>
 </section>
+
 <section class="panel">
-    <h2>2. Proyecto</h2>
-    <label for="project-select">Proyecto activo</label>
-    <select id="project-select" value="@projectId" @onchange="SelectProject" disabled="@(busy || initiativeId == 0)">
-        <option value="0">Selecciona un proyecto</option>
-        @foreach (var item in projects) { <option value="@item.Id">@item.Name</option> }
-    </select>
-    @if (CurrentProject is not null) { <p class="muted">@CurrentProject.WorkCalendar.Name<br />Responsable: @(CurrentProject.Responsible?.Name ?? "Sin asignar")</p><button type="button" class="secondary" disabled="@busy" @onclick="() => editingProject = true">Editar proyecto</button> }
+    <h2>Proyectos</h2>
+    <ul>
+    @foreach (var project in projects)
+    {
+        <li>@project.Name <span class="muted">· @(project.Initiative?.Name ?? "Sin iniciativa") · @(project.Person?.Name ?? "Sin responsable")</span></li>
+    }
+    </ul>
     <h3>Nuevo proyecto</h3>
     <EditForm Model="projectInput" OnValidSubmit="CreateProject" FormName="project">
         <DataAnnotationsValidator /><ValidationSummary />
-        <fieldset disabled="@(busy || initiativeId == 0)">
         <label>Nombre<InputText @bind-Value="projectInput.Name" /></label>
-        <label>Responsable (opcional)<InputText @bind-Value="projectInput.ResponsibleName" /></label>
-        <label>Calendario laboral<InputSelect @bind-Value="projectInput.WorkCalendarId">
-            <option value="0">Selecciona un calendario</option>
-            @foreach (var calendar in calendars) { <option value="@calendar.Id">@calendar.Name</option> }
-        </InputSelect></label>
+        <label>Iniciativa (opcional)
+            <select @bind="projectInput.InitiativeId">
+                <option value="">Sin iniciativa</option>
+                @foreach (var initiative in initiatives) { <option value="@initiative.Id">@initiative.Name</option> }
+            </select>
+        </label>
+        <label>Responsable (opcional)
+            <select @bind="projectInput.PersonId">
+                <option value="">Sin responsable</option>
+                @foreach (var person in people) { <option value="@person.Id">@person.Name</option> }
+            </select>
+        </label>
+        <label>Fecha meta (opcional)<InputDate @bind-Value="projectInput.TargetDate" /></label>
         <button type="submit">Crear proyecto</button>
-        </fieldset>
     </EditForm>
 </section>
+
 <section class="panel">
-    <h2>3. Actividad</h2>
-    <p class="muted">@(CurrentProject is null ? "Selecciona un proyecto para agregar actividades." : $"Agregar a {CurrentProject.Name}")</p>
-    <EditForm Model="activityInput" OnValidSubmit="CreateActivity" FormName="activity">
-        <DataAnnotationsValidator /><ValidationSummary />
-        <fieldset disabled="@(busy || projectId == 0)">
-        <label>Nombre<InputText @bind-Value="activityInput.Name" /></label>
-        <label>Responsable (opcional)<InputText @bind-Value="activityInput.ResponsibleName" /></label>
-                <label>Tipo de duración<InputSelect TValue="DurationType" Value="activityInput.DurationType" ValueChanged="ChangeNewDurationType" ValueExpression="() => activityInput.DurationType">
-            <option value="@DurationType.WorkingTime" disabled="@(CurrentProject?.WorkCalendar.IsFlexible == true)">Horas laborables</option><option value="@DurationType.ElapsedTime">Días naturales (espera / proveedor)</option><option value="@DurationType.ManualDates">Fechas manuales (sin horario)</option>
-        </InputSelect></label>
-        <div class="form-row"><label>Inicio planeado<InputDate @bind-Value="activityInput.Start" /></label>
-                @if (activityInput.DurationType == DurationType.ManualDates)
-        { <label>Fin planeado<InputDate @bind-Value="activityInput.Finish" /></label> }
-        else if (activityInput.DurationType == DurationType.ElapsedTime)
-        { <label>Duración (días naturales)<InputNumber @bind-Value="activityInput.DurationDays" step="0.01" /></label> }
-        else { <label>Duración (horas laborables)<InputNumber @bind-Value="activityInput.DurationHours" step="0.01" /></label> }
-        </div>
-        <label class="check"><InputCheckbox @bind-Value="activityInput.IsPrincipal" /> Mostrar en el dashboard de TV</label>
-        <p class="muted">Las fechas manuales no requieren horas y pueden incluir fines de semana. Las horas laborables respetan el calendario. Los días naturales incluyen fines de semana (1 día = 24 horas). El pronóstico inicial es igual al plan.</p>
-        <button type="submit">Agregar actividad</button>
-        </fieldset>
-    </EditForm>
-</section>
-</div>
-<section class="panel activity-list">
-    <h2>Actividades @(CurrentProject is null ? "" : $"· {CurrentProject.Name}")</h2>
-    @if (CurrentInitiative is not null && initiativeForecast is DateOnly forecastDate)
-    {
-        var difference = forecastDate.DayNumber - CurrentInitiative.TargetDate.DayNumber;
-        <p class="notice">Entrega estimada de la iniciativa: <strong>@forecastDate.ToString("dd/MM/yyyy")</strong> · Objetivo: @CurrentInitiative.TargetDate.ToString("dd/MM/yyyy") · @(difference > 0 ? $"Atrasado: +{difference} días naturales" : difference == 0 ? "En fecha objetivo" : $"{Math.Abs(difference)} días naturales antes del objetivo")</p>
-    }
-    @if (initiativeOpenBlockers > 0 && initiativeId != 0)
-    {
-        <p class="notice">Atención: @initiativeOpenBlockers bloqueo(s) abierto(s) en la iniciativa. Revisa su impacto en las entregas.</p>
-    }
-    @if (activities.Count == 0) { <p class="muted">Todavía no hay actividades en el proyecto seleccionado.</p> }
+    <h2>Actividades</h2>
+    @if (rows.Count == 0) { <p class="muted">Sin actividades.</p> }
     else
     {
-    <div class="table-scroll"><table><thead><tr><th>Actividad</th><th>Responsable</th><th>Inicio</th><th>Fin planeado</th><th>Duración planeada</th><th>Duración estimada</th><th>Inicio estimado</th><th>Fin estimado</th><th>Depende de</th><th>Estado</th><th>Cronograma</th><th>Bloqueos</th><th>TV</th><th>Acciones</th></tr></thead><tbody>
-        @foreach (var activity in activities)
-        {
-            <tr><td>@activity.Name</td><td>@(activity.Responsible?.Name ?? "Sin asignar")</td><td>@activity.PlannedStart.ToString("dd/MM/yyyy")</td><td>@activity.PlannedFinish.ToString("dd/MM/yyyy")</td><td>@WorkCalendarCalculator.DurationText(activity.PlannedDurationHours, activity.PlannedDurationType)</td><td>@WorkCalendarCalculator.DurationText(activity.EstimatedDurationHours, activity.EstimatedDurationType)</td><td>@activity.EstimatedStart.ToString("dd/MM/yyyy")</td><td>@activity.EstimatedFinish.ToString("dd/MM/yyyy")</td><td>@predecessorLabels.GetValueOrDefault(activity.Id, "—")</td><td>@StatusLabel(activity.Status)</td><td>@BlockerRules.Health(activity, openBlockers.ContainsKey(activity.Id), DateOnly.FromDateTime(DateTime.Today))</td><td>@openBlockers.GetValueOrDefault(activity.Id)</td><td>@(activity.IsPrincipal ? "Visible" : "Oculta")</td><td><button type="button" class="secondary" @onclick="() => editingActivityId = activity.Id" aria-label="@($"Editar {activity.Name}")" disabled="@busy">Editar</button></td></tr>
-        }
-    </tbody></table></div>
+        <table>
+            <thead><tr><th>Título</th><th>Proyecto</th><th>Responsable</th><th>Estimación</th><th>Pendiente</th><th>Estado</th></tr></thead>
+            <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>@row.Activity.Title</td>
+                    <td>@(row.Activity.Project?.Name ?? "Sin proyecto")</td>
+                    <td>@(row.Activity.Person?.Name ?? "Sin responsable")</td>
+                    <td>@row.Activity.CurrentEstimateHours.ToString("0.##") h</td>
+                    <td>@row.RemainingHours.ToString("0.##") h @if (row.NeedsReestimate) { <span class="badge risk">Revisar estimación</span> }</td>
+                    <td>@Status(row.Activity.Status)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
     }
+    <h3>Nueva actividad</h3>
+    <EditForm Model="activityInput" OnValidSubmit="CreateActivity" FormName="activity">
+        <DataAnnotationsValidator /><ValidationSummary />
+        <label>Título<InputText @bind-Value="activityInput.Title" /></label>
+        <label>Proyecto (opcional)
+            <select @bind="activityInput.ProjectId">
+                <option value="">Sin proyecto (tarea suelta)</option>
+                @foreach (var project in projects) { <option value="@project.Id">@project.Name</option> }
+            </select>
+        </label>
+        <label>Responsable (opcional)
+            <select @bind="activityInput.PersonId">
+                <option value="">Sin responsable</option>
+                @foreach (var person in people) { <option value="@person.Id">@person.Name</option> }
+            </select>
+        </label>
+        <label>Estimación total (horas)<InputNumber @bind-Value="activityInput.CurrentEstimateHours" step="0.25" /></label>
+        <fieldset>
+            <legend>Predecesoras (dependencias)</legend>
+            @if (allActivities.Count == 0) { <p class="muted">Sin actividades para enlazar.</p> }
+            @foreach (var activity in allActivities)
+            {
+                <label class="check"><input type="checkbox" checked="@selectedPredecessors.Contains(activity.Id)" @onchange="args => TogglePredecessor(activity.Id, args)" /> @activity.Title</label>
+            }
+        </fieldset>
+        <button type="submit">Crear actividad</button>
+    </EditForm>
 </section>
-}
 
-<BlockerPanel ProjectId="projectId" RefreshVersion="milestoneVersion" OnChanged="RefreshMilestoneSummary" @key="(typeof(BlockerPanel), projectId)" />
-<MilestonePanel ProjectId="projectId" RefreshVersion="milestoneVersion" OnChanged="RefreshMilestoneSummary" @key="(typeof(MilestonePanel), projectId)" />
-
-@if (editingProject && projectId > 0)
-{
-    <ProjectEditModal ProjectId="projectId" InitiativeId="initiativeId" OnClose="CloseProjectEditor" @key="(typeof(ProjectEditModal), projectId)" />
-}
-@if (editingActivityId is int editId)
-{
-    <ActivityEditModal Id="editId" OnClose="CloseActivityEditor" @key="(typeof(ActivityEditModal), editId)" />
-}
+<section class="panel">
+    <h2>Plantillas de carreras</h2>
+    @foreach (var template in templates)
+    {
+        <div class="pool-card">
+            <strong>@template.Name</strong> <span class="muted">· @CategoryName(template.Category)</span>
+            <ul>
+            @foreach (var item in template.Items)
+            {
+                <li>@item.Title · @item.EstimatedHours.ToString("0.##") h</li>
+            }
+            </ul>
+            <button class="secondary" @onclick="() => DeleteTemplateAsync(template.Id)">Eliminar</button>
+        </div>
+    }
+    <h3>Nueva plantilla</h3>
+    <EditForm Model="templateInput" OnValidSubmit="CreateTemplateAsync" FormName="template">
+        <DataAnnotationsValidator /><ValidationSummary />
+        <label>Nombre<InputText @bind-Value="templateInput.Name" /></label>
+        <label>Categoría
+            <InputSelect @bind-Value="templateInput.Category">
+                <option value="@TemplateCategory.Before">Antes</option>
+                <option value="@TemplateCategory.During">Durante</option>
+                <option value="@TemplateCategory.After">Después</option>
+            </InputSelect>
+        </label>
+        <label>Elementos (una línea por elemento: título,horas)<InputTextArea @bind-Value="templateItemsText" /></label>
+        <button type="submit">Crear plantilla</button>
+    </EditForm>
+</section>
 
 @code {
-    private Dictionary<int, int> openBlockers = [];
-    private int initiativeOpenBlockers;
-    private void ChangeNewDurationType(DurationType type)
-    {
-        var value = activityInput.DurationType == DurationType.ElapsedTime ? activityInput.DurationDays : activityInput.DurationHours;
-        activityInput.DurationType = type;
-        activityInput.DurationHours = type == DurationType.ManualDates ? 0 : type == DurationType.ElapsedTime ? Math.Max(1, value) * 24m : Math.Max(1, value);
-        if (type == DurationType.ManualDates) activityInput.Finish = activityInput.Start;
-    }
-    private void ResetActivityInput()
-    {
-        activityInput = new();
-        if (CurrentProject?.WorkCalendar.IsFlexible == true) { activityInput.DurationType = DurationType.ManualDates; activityInput.DurationHours = 0; }
-    }
-    private bool editingProject;
-    private async Task CloseProjectEditor(bool saved)
-    {
-        editingProject = false;
-        await Execute(async () => { await LoadProjects(); await LoadActivities(); if (CurrentProject?.WorkCalendar.IsFlexible == true && activityInput.DurationType == DurationType.WorkingTime) { activityInput.DurationType = DurationType.ManualDates; activityInput.DurationHours = 0; activityInput.Finish = activityInput.Start; } }, saved ? "Proyecto actualizado. El plan original se conservó." : null);
-    }
-    private int milestoneVersion;
-    private async Task RefreshMilestoneSummary() => await Execute(LoadActivities);
-    private Dictionary<int, string> predecessorLabels = [];
-    private DateOnly? initiativeForecast;
-    private int? editingActivityId;
-    private async Task CloseActivityEditor(bool saved)
-    {
-        editingActivityId = null;
-        await Execute(async () => await LoadActivities(), saved ? "Actividad y dependencias actualizadas. Se recalculó el pronóstico de la iniciativa." : null);
-    }
-    private static string StatusLabel(ActivityStatus status) => status switch { ActivityStatus.InProgress => "En curso", ActivityStatus.Completed => "Completada", _ => "Pendiente" };
+    private List<Person> people = [];
     private List<Initiative> initiatives = [];
     private List<Project> projects = [];
-    private List<WorkCalendar> calendars = [];
-    private List<ProjectActivity> activities = [];
-    private InitiativeInput initiativeInput = new();
-    private ProjectInput projectInput = new();
-    private ActivityInput activityInput = new();
-    private int initiativeId, projectId;
-    private bool loading = true, busy;
-    private string? message;
-    private Initiative? CurrentInitiative => initiatives.FirstOrDefault(x => x.Id == initiativeId);
-    private Project? CurrentProject => projects.FirstOrDefault(x => x.Id == projectId);
+    private List<Activity> allActivities = [];
+    private List<ActivityService.ActivityRow> rows = [];
+    private readonly PersonInput personInput = new();
+    private readonly InitiativeInput initiativeInput = new();
+    private readonly ProjectInput projectInput = new();
+    private readonly ActivityInput activityInput = new();
+    private HashSet<int> selectedPredecessors = [];
+    private List<Template> templates = [];
+    private readonly TemplateInput templateInput = new();
+    private string templateItemsText = "";
+    private string? error;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await Execute(async () =>
-        {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            initiatives = await db.Initiatives.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
-            calendars = await db.WorkCalendars.AsNoTracking().Include(x => x.Days).OrderBy(x => x.Id).ToListAsync();
-        });
-        loading = false;
-    }
+    protected override async Task OnInitializedAsync() => await Load();
 
-    private async Task Execute(Func<Task> action, string? success = null)
+    private async Task Load()
     {
-        if (busy) return;
-        busy = true;
-        message = null;
-        try { await action(); if (success is not null) message = success; }
-        catch (ArgumentException ex) { message = ex.Message; }
-        catch (Exception ex)
+        try
         {
-            Logger.LogError(ex, "No se pudo completar la operación de planificación.");
-            message = "No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo. Consulta el registro para más detalles.";
+            people = await People.ListActiveAsync();
+            initiatives = await Projects.ListInitiativesAsync();
+            projects = await Projects.ListProjectsAsync();
+            allActivities = await Activities.ListAsync();
+            rows = await Activities.ListRowsAsync();
+            templates = await Templates.ListAsync();
         }
-        finally { busy = false; }
+        catch (Exception ex) { error = ex.Message; }
     }
 
-    private async Task SelectInitiative(ChangeEventArgs args) => await Execute(async () =>
+    private async Task CreatePerson()
     {
-        initiativeId = int.TryParse(args.Value?.ToString(), out var id) ? id : 0;
-        projectId = 0;
-        activities = []; initiativeForecast = null; predecessorLabels = []; openBlockers = []; initiativeOpenBlockers = 0;
-        ResetActivityInput();
-        projectInput = new();
-        await LoadProjects();
-        await LoadActivities();
-    });
-
-    private async Task LoadProjects()
-    {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        projects = await db.Projects.AsNoTracking().Include(x => x.WorkCalendar).ThenInclude(x => x.Days)
-            .Include(x => x.Responsible).Where(x => x.InitiativeId == initiativeId).OrderBy(x => x.Name).ToListAsync();
+        try { await People.CreateAsync(personInput); await Load(); }
+        catch (Exception ex) { error = ex.Message; }
     }
 
-    private async Task SelectProject(ChangeEventArgs args) => await Execute(async () =>
+    private async Task CreateInitiative()
     {
-        projectId = int.TryParse(args.Value?.ToString(), out var id) ? id : 0;
-        ResetActivityInput();
-        await LoadActivities();
-    });
-
-    private async Task LoadActivities()
-    {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        activities = await db.Activities.AsNoTracking().Include(x => x.Responsible)
-            .Where(x => x.ProjectId == projectId).OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).ToListAsync();
-        var links = await db.ActivityDependencies.AsNoTracking()
-            .Where(x => x.Successor.ProjectId == projectId)
-            .Select(x => new { x.SuccessorId, Label = x.Predecessor.Project.Name + " · " + x.Predecessor.Name }).ToListAsync();
-        predecessorLabels = links.GroupBy(x => x.SuccessorId).ToDictionary(x => x.Key, x => string.Join(", ", x.Select(y => y.Label)));
-        var blockerCounts = await db.Blockers.AsNoTracking().Where(x => x.Activity.ProjectId == projectId && x.ResolvedAt == null)
-            .GroupBy(x => x.ActivityId).Select(x => new { Id = x.Key, Count = x.Count() }).ToListAsync();
-        openBlockers = blockerCounts.ToDictionary(x => x.Id, x => x.Count);
-        initiativeOpenBlockers = await db.Blockers.CountAsync(x => x.Activity.Project.InitiativeId == initiativeId && x.ResolvedAt == null);
-        milestoneVersion++;
-        initiativeForecast = await db.Activities.Where(x => x.Project.InitiativeId == initiativeId)
-            .Select(x => (DateOnly?)(x.Status == ActivityStatus.Completed && x.ActualFinish.HasValue ? x.ActualFinish.Value : x.EstimatedFinish)).MaxAsync();
-        var milestoneFinish = await db.Milestones.Where(x => x.Project.InitiativeId == initiativeId)
-            .Select(x => (DateOnly?)(x.ActualDate ?? x.EstimatedDate)).MaxAsync();
-        if (milestoneFinish.HasValue && (!initiativeForecast.HasValue || milestoneFinish > initiativeForecast)) initiativeForecast = milestoneFinish;
+        try { await Projects.CreateInitiativeAsync(initiativeInput); await Load(); }
+        catch (Exception ex) { error = ex.Message; }
     }
 
-    private static string CleanName(string value)
+    private async Task CreateProject()
     {
-        if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException("El nombre no puede estar vacío.");
-        return value.Trim();
+        try { await Projects.CreateProjectAsync(projectInput); await Load(); }
+        catch (Exception ex) { error = ex.Message; }
     }
 
-    private static async Task<Responsible?> ResolveResponsible(ProjectManagerDbContext db, string? name)
+    private async Task CreateActivity()
     {
-        if (string.IsNullOrWhiteSpace(name)) return null;
-        name = name.Trim();
-        return await db.Responsibles.FirstOrDefaultAsync(x => x.Name == name) ?? new Responsible { Name = name };
+        activityInput.PredecessorIds = selectedPredecessors.ToList();
+        try { await Activities.CreateAsync(activityInput); selectedPredecessors = []; await Load(); }
+        catch (Exception ex) { error = ex.Message; }
     }
 
-    private async Task CreateInitiative() => await Execute(async () =>
+    private void TogglePredecessor(int id, ChangeEventArgs args)
     {
-        if (initiativeInput.TargetDate.Year < 2000 || initiativeInput.TargetDate.Year > 2090)
-            throw new ArgumentException("Selecciona una fecha objetivo entre 2000 y 2090.");
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var entity = new Initiative { Name = CleanName(initiativeInput.Name), Description = initiativeInput.Description?.Trim(), TargetDate = initiativeInput.TargetDate };
-        db.Initiatives.Add(entity);
-        await db.SaveChangesAsync();
-        initiatives.Add(entity);
-        initiatives = initiatives.OrderBy(x => x.Name).ToList();
-        initiativeId = entity.Id;
-        projectId = 0; projects = []; activities = []; initiativeForecast = null; predecessorLabels = []; openBlockers = []; initiativeOpenBlockers = 0;
-        initiativeInput = new(); projectInput = new(); activityInput = new();
-    }, "Iniciativa creada. Agrega su primer proyecto.");
+        if (args.Value is bool isChecked && isChecked) selectedPredecessors.Add(id);
+        else selectedPredecessors.Remove(id);
+    }
 
-    private async Task CreateProject() => await Execute(async () =>
+    private async Task CreateTemplateAsync()
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        if (!await db.Initiatives.AnyAsync(x => x.Id == initiativeId)) throw new ArgumentException("Selecciona una iniciativa válida.");
-        if (!await db.WorkCalendars.AnyAsync(x => x.Id == projectInput.WorkCalendarId)) throw new ArgumentException("Selecciona un calendario válido.");
-        var entity = new Project { Name = CleanName(projectInput.Name), InitiativeId = initiativeId,
-            WorkCalendarId = projectInput.WorkCalendarId, Responsible = await ResolveResponsible(db, projectInput.ResponsibleName) };
-        db.Projects.Add(entity);
-        await db.SaveChangesAsync();
-        await LoadProjects();
-        projectId = entity.Id; activities = []; projectInput = new(); ResetActivityInput();
-    }, "Proyecto creado. Ya puedes agregar actividades.");
+        templateInput.Items = templateItemsText
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => line.Split(',', 2))
+            .Select(parts => new TemplateItemInput
+            {
+                Title = parts[0].Trim(),
+                EstimatedHours = parts.Length > 1 && decimal.TryParse(parts[1].Trim(), out var h) ? h : 0
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Title) && x.EstimatedHours > 0)
+            .ToList();
+        try { await Templates.CreateAsync(templateInput); templateInput.Items = []; templateItemsText = ""; await Load(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
 
-    private async Task CreateActivity() => await Execute(async () =>
+    private async Task DeleteTemplateAsync(int id)
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var project = await db.Projects.Include(x => x.WorkCalendar).ThenInclude(x => x.Days)
-            .SingleOrDefaultAsync(x => x.Id == projectId && x.InitiativeId == initiativeId)
-            ?? throw new ArgumentException("Selecciona un proyecto válido.");
-        if (project.WorkCalendar.IsFlexible && activityInput.DurationType == DurationType.WorkingTime) throw new ArgumentException("Usa fechas manuales o días naturales en este proyecto flexible.");
-        var finish = activityInput.DurationType == DurationType.ManualDates ? activityInput.Finish : WorkCalendarCalculator.Finish(activityInput.Start, activityInput.DurationHours,
-            project.WorkCalendar.Days.ToDictionary(x => x.DayOfWeek, x => x.WorkingHours), activityInput.DurationType);
-        var forecast = activityInput.DurationType == DurationType.ManualDates ? (Start: new WorkPoint(activityInput.Start, 0), Finish: new WorkPoint(finish, 24)) : WorkCalendarCalculator.Schedule(new(activityInput.Start, 0), activityInput.DurationHours,
-            project.WorkCalendar.Days.ToDictionary(x => x.DayOfWeek, x => x.WorkingHours), activityInput.DurationType);
-        var order = await db.Activities.Where(x => x.ProjectId == projectId).Select(x => (int?)x.DisplayOrder).MaxAsync() ?? 0;
-        db.Activities.Add(new ProjectActivity
-        {
-            ProjectId = projectId, Name = CleanName(activityInput.Name), Responsible = await ResolveResponsible(db, activityInput.ResponsibleName),
-            PlannedStart = activityInput.Start, PlannedFinish = finish, RequestedStart = activityInput.Start, EstimatedStart = activityInput.Start, EstimatedFinish = finish,
-            PlannedDurationType = activityInput.DurationType, EstimatedDurationType = activityInput.DurationType,
-            RequestedFinish = activityInput.DurationType == DurationType.ManualDates ? finish : null,
-            EstimatedStartHour = forecast.Start.Hour, EstimatedFinishHour = forecast.Finish.Hour,
-            PlannedDurationHours = activityInput.DurationHours, EstimatedDurationHours = activityInput.DurationHours,
-            IsPrincipal = activityInput.IsPrincipal, Status = ActivityStatus.Pending, DisplayOrder = order + 1
-        });
-        await db.SaveChangesAsync();
-        ResetActivityInput();
-        await LoadActivities();
-    }, "Actividad guardada con su plan original.");
+        try { await Templates.DeleteAsync(id); await Load(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private static string CategoryName(TemplateCategory category) => category switch
+    {
+        TemplateCategory.Before => "Antes",
+        TemplateCategory.During => "Durante",
+        _ => "Después"
+    };
+
+    private static string Status(ActivityStatus status) => status switch
+    {
+        ActivityStatus.Pending => "Pendiente",
+        ActivityStatus.InProgress => "En curso",
+        _ => "Completada"
+    };
 }
-
-
-
-
-
-
-
-
-
-
-
-
 

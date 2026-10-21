@@ -1,35 +1,40 @@
 @page "/login"
 @attribute [AllowAnonymous]
-@inject IDbContextFactory<ProjectManagerDbContext> DbFactory
-@using Microsoft.EntityFrameworkCore
-@using RaceIT.ProjectManager.Data
-@using RaceIT.ProjectManager.Domain
+@inject PersonService PersonService
 
 <PageTitle>Seleccionar usuario | RaceIT</PageTitle>
 <section class="panel">
     <h1>Seleccionar usuario</h1>
-    <p>Acceso provisional sin contraseña para pruebas locales.</p>
+    <p class="muted">Acceso provisional sin contraseña para desarrollo local.</p>
     @if (error is not null) { <p role="alert">@error</p> }
     <form method="post" action="/session/login" data-enhance="false">
         <AntiforgeryToken />
-        <label>Usuario<select name="user" required>
-            <option value="">Selecciona un usuario</option>
-            <option value="admin">Administrador (provisional)</option>
-            @foreach (var person in people) { <option value="@person.Id">@person.Name · Empleado (#@person.Id)</option> }
-        </select></label>
+        <label>Usuario
+            <select name="user" required>
+                <option value="">Selecciona un usuario</option>
+                @foreach (var person in people)
+                {
+                    <option value="@person.Id">@person.Name · @(person.Role == PersonRole.Admin ? "Administrador" : "Usuario") (#@person.Id)</option>
+                }
+            </select>
+        </label>
         <button type="submit">Entrar</button>
     </form>
 </section>
 
 @code {
-    private List<Responsible> people = [];
+    private List<Person> people = [];
     private string? error;
+
     protected override async Task OnInitializedAsync()
     {
-        try {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            people = await db.Responsibles.AsNoTracking().OrderBy(x => x.Name).ThenBy(x => x.Id).ToListAsync();
+        try
+        {
+            people = await PersonService.ListForLoginAsync();
         }
-        catch (Exception) { error = "No se pudo cargar la lista de empleados. Comprueba la conexión."; }
+        catch (Exception)
+        {
+            error = "No se pudo cargar la lista de usuarios. Comprueba la conexión.";
+        }
     }
 }
