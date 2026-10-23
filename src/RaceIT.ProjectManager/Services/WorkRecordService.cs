@@ -36,6 +36,19 @@ public sealed class WorkRecordService(IDbContextFactory<ProjectManagerDbContext>
         return new ActivityDetail(activity, records, open, total);
     }
 
+    // Actividades del usuario actual con una sesión de trabajo abierta (contador activo).
+    public async Task<HashSet<int>> ListOpenSessionActivityIdsAsync()
+    {
+        await access.RequireAuthenticatedAsync();
+        var personId = await access.PersonIdAsync() ?? throw new ArgumentException("Selecciona un usuario válido.");
+        await using var db = await factory.CreateDbContextAsync();
+        var ids = await db.WorkRecords.AsNoTracking()
+            .Where(x => x.PersonId == personId && x.Kind == WorkRecordKind.Session && x.End == null)
+            .Select(x => x.ActivityId)
+            .ToListAsync();
+        return ids.ToHashSet();
+    }
+
     public async Task StartSessionAsync(int activityId)
     {
         await access.RequireAuthenticatedAsync();

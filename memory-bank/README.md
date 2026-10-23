@@ -1,6 +1,6 @@
 # Memory bank · RaceIT.ProjectManager
 
-Última actualización: 2026-10-21 (America/Denver).
+Última actualización: 2026-10-22 (America/Denver).
 
 Contexto persistente del proyecto. Describe acuerdos y estado comprobado; no sustituye al código ni convierte propuestas en requisitos aprobados.
 
@@ -19,7 +19,7 @@ Actualizar los archivos afectados al completar un cambio relevante o cuando el u
 
 Redefinición vigente: se descartó el modelo anterior (fechas/Gantt, milestones, bloqueos, TV por iniciativa) y se reconstruye según `Project_Manager_Notas_Diseno.md` (esfuerzo, plan semanal, registro de tiempo y alertas de riesgo).
 
-Estado real en `activeContext.md` y `progress.md`: implementadas las Etapas 1–7 (confirmadas por el usuario), con login provisional. Arrastrar y soltar implementado posteriormente; ver pendientes y límites de verificación en activeContext.md y progress.md. Los documentos `projectbrief.md`, `productContext.md` y `users-and-work-planning.md` describen el modelo descartado; solo `projectbrief.md` conserva identidad vigente (compañía, repositorio, namespace, idioma).
+Estado real en `activeContext.md` y `progress.md`: implementadas las Etapas 1–7 (confirmadas por el usuario), con login provisional. Arrastrar y soltar implementado posteriormente; ver pendientes y límites de verificación en activeContext.md y progress.md. Los documentos `projectbrief.md`, `productContext.md` y `users-and-work-planning.md` se corrigieron (2026-10-22) para reflejar el modelo vigente de esfuerzo y plan semanal; ya no describen el modelo descartado. El detalle de la actividad se abre en modal (con registro de tiempo y edición de horas del bloque) y las barras del timeline indican el estado de trabajo (brillo = contador activo, amarillo pálido = iniciada y pausada).
 
 Mensaje sugerido para un chat nuevo desde la carpeta del repositorio:
 

@@ -31,7 +31,7 @@ VS Code: F5 con RaceIT.ProjectManager (Blazor). HTTP http://localhost:5208. Si e
 
 ## Pruebas
 
-- 29 pruebas xUnit en `tests/RaceIT.ProjectManager.Tests` (`PlanningRulesTests`, `WorkAccessTests`, `WeekLayoutCalculatorTests`, `RiskCalculatorTests`, `TemplateRulesTests`), sin requerir SQL Server.
+- 33 pruebas xUnit en `tests/RaceIT.ProjectManager.Tests` (`PlanningRulesTests`, `WorkAccessTests`, `WeekLayoutCalculatorTests`, `RiskCalculatorTests`, `TemplateRulesTests`, `BlockHoursInputTests`), sin requerir SQL Server.
 - `dotnet test RaceIT.ProjectManager.sln` no depende de la base.
 
 ## Verificación visual

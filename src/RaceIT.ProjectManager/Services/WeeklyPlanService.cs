@@ -68,10 +68,15 @@ public sealed class WeeklyPlanService(IDbContextFactory<ProjectManagerDbContext>
         if (hours <= 0) throw new ArgumentException("La cantidad debe ser mayor a cero.");
         var personId = await access.PersonIdAsync() ?? throw new ArgumentException("Selecciona un usuario válido.");
         await using var db = await factory.CreateDbContextAsync();
-        var block = await db.PlanBlocks.Include(x => x.WeeklyPlan).SingleOrDefaultAsync(x => x.Id == blockId)
+        var block = await db.PlanBlocks.Include(x => x.WeeklyPlan).Include(x => x.Activity)
+            .SingleOrDefaultAsync(x => x.Id == blockId)
             ?? throw new ArgumentException("El bloque no existe.");
         if (block.WeeklyPlan.PersonId != personId && !await access.IsAdminAsync())
             throw new UnauthorizedAccessException("El plan no es tuyo.");
+        var recorded = await db.WorkRecords.Where(x => x.ActivityId == block.ActivityId).SumAsync(x => (decimal?)x.Hours) ?? 0;
+        var pending = PlanningRules.RemainingHours(block.Activity.CurrentEstimateHours, recorded);
+        if (hours > pending)
+            throw new ArgumentException($"Las horas planeadas no pueden superar las horas pendientes ({pending:0.##} h).");
         block.PlannedHours = hours;
         await db.SaveChangesAsync();
     }

@@ -1,29 +1,31 @@
-﻿# Project brief
+# Project brief
+
+Última actualización: 2026-10-22 (America/Denver). Alineado con el modelo vigente de esfuerzo y plan semanal (`Project_Manager_Notas_Diseno.md`).
 
 ## Identidad
 
 - Compañía: RaceIT.
 - Repositorio: projectManager, remoto https://github.com/etiznado/projectManager.git.
 - Solución y namespace raíz: RaceIT.ProjectManager.
-- Idioma de interacción e interfaz: español. El usuario prefiere el término milestones.
+- Idioma de interacción e interfaz: español.
 
 ## Objetivo
 
-Herramienta de project management de alto nivel para mostrar en una TV de 32 pulgadas Full HD (1920 × 1080) el cronograma y la salud de una iniciativa. Debe permitir reconocer si la entrega va en tiempo, en riesgo o atrasada, y cuánto se desvía del plan.
+Herramienta de project management de alto nivel para mostrar en una TV de 32 pulgadas Full HD (1920 x 1080) el estado de iniciativas y proyectos y el plan semanal del empleado, con avance real y alertas de riesgo. El administrador y el empleado deben poder entender cómo va el trabajo.
 
-## Alcance acordado
+## Alcance acordado (modelo vigente)
 
-- Iniciativa → proyectos → actividades. Ejemplo: Data Logger → PCB, case y batería.
-- Actividades secuenciales y paralelas con fechas y dependencias, incluso entre proyectos de una iniciativa.
-- Administración desde computadora; pantalla TV de consulta con actualización automática como objetivo.
-- Una iniciativa por pantalla y solo actividades principales visibles. Una vista de varias iniciativas o grupos colapsables es una posibilidad posterior.
-- Timeline tipo Gantt, línea de hoy, comparación contra plan original, próximos milestones y bloqueos relevantes.
+- Iniciativa -> proyecto -> actividad. Un proyecto puede ser independiente (sin iniciativa) y una actividad puede ser suelta (sin proyecto).
+- Crear una actividad no exige fechas de inicio/fin: se registra su esfuerzo estimado y sus dependencias antes de programarla. Proyectos e iniciativas tienen fecha meta cuando corresponda.
+- El empleado reparte una bolsa semanal de horas de referencia entre actividades en Mi semana (plan semanal con bloques).
+- Registro de tiempo real (sesiones y captura manual), terminación explícita y alertas de riesgo por carga compartida.
+- Pantalla de iniciativas/proyectos para TV con actualización automática; administración desde computadora.
 - Desarrollo local primero. Hosting fuera del alcance actual por decisión del usuario.
 
 ## Último acuerdo
 
-Las horas y fechas planeadas permanecen sin edición por ahora. No implementar aprobación de plan ni desbloqueo de la línea base: se propuso, pero el usuario pidió dejarlo como está.
+Jornada de referencia confirmada de 45 h semanales: 8 h de lunes a viernes, 5 h el sábado y 0 el domingo; configurable por persona.
 
-## Ampliación acordada, pendiente de implementación (2026-10-19)
+## Modelo anterior descartado
 
-Permitir proyectos sin iniciativa y actividades independientes sin proyecto. Ejemplo: Cajones de herramienta es un proyecto con varias actividades, sin iniciativa artificial. Añadir TV por empleado para el administrador, combinando trabajo activo de proyectos con/sin iniciativa y actividades independientes; conservar la TV por iniciativa. La primera TV por empleado no dependerá de planes por períodos. Detalles y estado real en activeContext.md y users-and-work-planning.md.
+Se descartó por completo el enfoque previo (cronograma por fechas/Gantt, milestones, bloqueos, calendarios por proyecto y TV por iniciativa), junto con su código y base de datos. Las notas históricas de este documento (milestones, plan original protegido, TV por iniciativa) ya no aplican.

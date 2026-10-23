@@ -1,13 +1,13 @@
 # Progress
 
-Actualizado: 2026-10-21.
+Actualizado: 2026-10-22.
 
 ## Redefinición completa (Etapas 1 y 2)
 
 El usuario decidió descartar el modelo anterior y reconstruir según `Project_Manager_Notas_Diseno.md`. Se eliminaron dominio, servicios, páginas, migraciones y pruebas anteriores; se borró la base `projectManager` y se recreó vacía.
 
 - Modelo de dominio nuevo (10 entidades): `Person`/`PersonWorkday`, `Initiative`, `Project`, `Activity`, `ActivityDependency`, `WeeklyPlan`, `PlanBlock`, `WorkRecord`, `Template`, `TemplateItem`. Sin fechas obligatorias en actividades.
-- `ProjectManagerDbContext` con restricciones CHECK, índice único `WeeklyPlan(PersonId, WeekStart)` y semilla del Administrador (Persona Id=1, jornada Lun–Sáb 7.5 h).
+- `ProjectManagerDbContext` con restricciones CHECK, índice único `WeeklyPlan(PersonId, WeekStart)` y semilla del Administrador (Persona Id=1; jornada inicial ilustrativa Lun–Sáb 7.5 h, corregida después a 8/8/8/8/8/5/0 con la migración `WorkweekEightFive`).
 - Migración `InitialModel` (20261021010653) en `src/RaceIT.ProjectManager/Migrations/`, aplicada sobre base vacía.
 - Login provisional con cookie; `WorkAccess` con roles Administrador/Usuario y métodos estáticos puros para pruebas.
 - Servicios: `PersonService`, `ProjectService`, `ActivityService` (crear actividad sin fechas + dependencias con validación de ciclos + horas pendientes) y `PlanningRules`.
@@ -20,14 +20,14 @@ Verificación: build 0 errores/0 advertencias; 19 pruebas xUnit correctas (`Plan
 - `WorkRecordService`: iniciar/pausar/reanudar sesiones, registro manual, un solo contador activo por persona (iniciar otra actividad pausa la anterior) y completar explícito que cierra sesiones abiertas.
 - `PlanningRules.SessionHours`: duración de sesión en horas decimales.
 - `ManualTimeInput`: validación de registro manual.
-- `/mi-semana`: filas seleccionables + detalle inferior con Iniciar/Reanudar/Pausar/Registrar tiempo/Completar, horas estimadas/registradas/pendientes y registros recientes.
+- `/mi-semana`: filas seleccionables + detalle inferior con Iniciar/Reanudar/Pausar/Registrar tiempo/Completar, horas estimadas/registradas/pendientes y registros recientes (más adelante el detalle pasó a mostrarse en modal).
 - Verificación: build 0/0 y 21 pruebas xUnit. Sin migración nueva (WorkRecords ya existía en InitialModel). Sin prueba visual ni interacción SQL automatizada.
 
 ## Etapa 4: Mi semana (2026-10-21)
 
 - `WeekLayoutCalculator`: regla pura que coloca bloques consecutivos sobre el eje de horas laborables y calcula días, offsets y horas libres.
 - `WeeklyPlanService`: obtener/crear plan semanal, agregar/quitar bloques, editar horas y reordenar.
-- `/mi-semana`: navegación de semana, métricas (disponibles/planeadas/registradas/sin asignar), pool de actividades, timeline con barras proporcionales y línea "ahora", reordenamiento vertical y detalle inferior con registro de tiempo.
+- `/mi-semana`: navegación de semana, métricas (disponibles/planeadas/registradas/sin asignar), pool de actividades, timeline con barras proporcionales y línea "ahora", reordenamiento vertical y detalle inferior con registro de tiempo (más adelante el detalle pasó a mostrarse en modal).
 - Reordenamiento vertical por arrastre implementado; la tabla separada y las flechas ↑/↓ se retiraron en favor del drag & drop nativo.
 - Verificación: build 0/0 y 29 pruebas xUnit. Sin migración nueva (WeeklyPlans y PlanBlocks ya existían). Sin prueba visual ni interacción SQL automatizada.
 
@@ -176,3 +176,16 @@ Valores de Planeadas en azul, Sin asignar en amarillo y Completadas en verde, us
 ### Relleno verde en barras (2026-10-20)
 
 Barras conservan longitud/etiqueta de horas planeadas y añaden relleno verde de tiempo registrado / estimación total actual de la actividad (limitado a 0–100%); actividad completada explícitamente llena la barra. Múltiples bloques de la misma actividad usan la misma proporción. Es indicador de consumo de esfuerzo, no medición independiente de avance físico ni finalización automática; se conserva la regla de revisar estimación al agotarse. Los datos actuales no incluyen porcentaje de avance físico. Verificación visual pendiente.
+
+### Editar horas planeadas del bloque (2026-10-22)
+
+Aclarado: la barra del timeline ya muestra las horas planeadas del bloque (`PlanBlock.PlannedHours`); coincidían con las pendientes porque al arrastrar del pool se inicializan con `RemainingHours`. Se conserva esa lógica de arrastre (el reordenamiento vertical solo cambia la posición). Se añadió en el detalle de la actividad un editor de las horas planeadas del bloque de la semana visible, con máximo = horas pendientes de la actividad (estimación − registradas). Validación en `BlockHoursInput` (máximo dinámico) y en `WeeklyPlanService.SetBlockHoursAsync` (servidor). Nuevo `BlockHoursInputTests` (4 pruebas). Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
+
+### Detalle de la actividad como modal (2026-10-22)
+
+El detalle de la actividad (antes al fondo de la página) ahora se abre como modal sobre un fondo oscurecido, con encabezado, botón ✕ y botón Cerrar. Cierra con clic en el fondo, con ✕, con Cerrar o con Escape; el enfoque al modal se hace con `ElementReference.FocusAsync` (sin JS propio). El contenido no cambió: estado, métricas, Iniciar/Pausar/Reanudar, Registrar tiempo, Completar, Continuar, edición de horas del bloque, registros y continuaciones; el error de las acciones del modal se muestra dentro del modal. Estilos nuevos en `app.css` (`.modal-backdrop`, `.modal`, `.modal-head`, `.modal-close`). Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
+
+### Ajustes del modal y barras en curso (2026-10-22)
+
+Se quitó el botón Cerrar del modal (quedan la ✕, el clic en el fondo y Escape). El nombre del proyecto en el modal usa la clase `.project-name` (color acento). Las barras se distinguen por estado de trabajo: amarillo brillante (`schedule-bar.running`, variable `--running`, con brillo) si la actividad tiene una sesión abierta (contador activo) y amarillo pálido (`schedule-bar.in-progress`, variable `--paused`) si está iniciada pero pausada. Se añadieron `Status` y `HasOpenSession` a `BlockVm` y `WorkRecordService.ListOpenSessionActivityIdsAsync` para conocer las sesiones abiertas. Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
+

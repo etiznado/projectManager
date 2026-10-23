@@ -90,3 +90,21 @@ public sealed class ManualTimeInput : IValidatableObject
         yield break;
     }
 }
+
+// Horas planeadas de un bloque del plan semanal. El máximo es dinámico: las horas
+// pendientes de la actividad (estimación − registradas).
+public sealed class BlockHoursInput : IValidatableObject
+{
+    [Range(typeof(decimal), "0.01", "1000000", ErrorMessage = "Captura una cantidad mayor a cero.")]
+    public decimal Hours { get; set; }
+
+    public decimal MaxHours { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext context)
+    {
+        if (Hours > MaxHours)
+            yield return new ValidationResult(
+                $"Las horas planeadas no pueden superar las pendientes ({MaxHours:0.##} h).",
+                new[] { nameof(Hours) });
+    }
+}

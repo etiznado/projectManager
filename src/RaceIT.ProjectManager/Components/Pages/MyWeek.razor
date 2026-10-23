@@ -86,7 +86,7 @@
                                 <div class="schedule-gridline" style="left:@Pct(day.CumulativeStart, axis)%"></div>
                             }
                             @if (nowPct is not null) { <div class="now-line" style="left:@nowPct%"></div> }
-                            <button class="schedule-bar" draggable="true" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag"
+                            <button class="schedule-bar @BarClass(block)" draggable="true" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag"
                                     style="left:@Pct(start, axis)%;width:@Pct(block.Hours, axis)%" @onclick="() => SelectAsync(block.ActivityId)" title="@($"{block.Title} · {Format(block.Hours)} planeadas")">
                                 <span class="schedule-progress" style="width:@Pct(block.Progress, 1m)%" aria-hidden="true"></span>
                                 <span class="schedule-hours">@Format(block.Hours)</span>
@@ -127,65 +127,101 @@
 
 @if (detail is not null)
 {
-    <section class="panel">
-        <h2>@detail.Activity.Title</h2>
-        <p>@(detail.Activity.Project?.Name ?? "Sin proyecto") · <span class="badge info">@Status(detail.Activity.Status)</span></p>
-        <p class="muted">@Format(detail.Activity.CurrentEstimateHours) estimación · @Format(detail.RecordedHours) registradas · @Format(detail.RemainingHours) pendientes @if (detail.NeedsReestimate) { <span class="badge risk">Revisar estimación</span> }</p>
+    <div class="modal-backdrop" tabindex="-1" @ref="detailModal" @onkeydown="OnDetailKeyDown" @onclick="CloseDetail">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="detail-title" @onclick:stopPropagation>
+            <div class="modal-head">
+                <h2 id="detail-title">@detail.Activity.Title</h2>
+                <button class="modal-close" aria-label="Cerrar detalle" @onclick="CloseDetail">✕</button>
+            </div>
+            <div class="modal-body">
+                @if (error is not null) { <p role="alert">@error</p> }
+                <p><span class="project-name">@(detail.Activity.Project?.Name ?? "Sin proyecto")</span> · <span class="badge info">@Status(detail.Activity.Status)</span></p>
+                <p class="muted">@Format(detail.Activity.CurrentEstimateHours) estimación · @Format(detail.RecordedHours) registradas · @Format(detail.RemainingHours) pendientes @if (detail.NeedsReestimate) { <span class="badge risk">Revisar estimación</span> }</p>
 
-        <div class="form-actions">
-            @if (detail.Activity.Status == ActivityStatus.Pending)
-            {
-                <button @onclick="StartAsync">Iniciar</button>
-            }
-            else if (detail.Activity.Status == ActivityStatus.InProgress)
-            {
-                @if (detail.OpenSession is not null) { <button @onclick="PauseAsync">Pausar</button> }
-                else { <button @onclick="StartAsync">Reanudar</button> }
-            }
-            @if (detail.Activity.Status != ActivityStatus.Completed)
-            {
-                <button class="secondary" @onclick="() => showManual = !showManual">Registrar tiempo</button>
-                <button class="secondary" @onclick="CompleteAsync">Completar</button>
-                <button class="secondary" @onclick="ContinueAsync">Continuar</button>
-            }
-        </div>
+                <div class="form-actions">
+                    @if (detail.Activity.Status == ActivityStatus.Pending)
+                    {
+                        <button @onclick="StartAsync">Iniciar</button>
+                    }
+                    else if (detail.Activity.Status == ActivityStatus.InProgress)
+                    {
+                        @if (detail.OpenSession is not null) { <button @onclick="PauseAsync">Pausar</button> }
+                        else { <button @onclick="StartAsync">Reanudar</button> }
+                    }
+                    @if (detail.Activity.Status != ActivityStatus.Completed)
+                    {
+                        <button class="secondary" @onclick="() => showManual = !showManual">Registrar tiempo</button>
+                        <button class="secondary" @onclick="CompleteAsync">Completar</button>
+                        <button class="secondary" @onclick="ContinueAsync">Continuar</button>
+                    }
+                </div>
 
-        @if (showManual)
-        {
-            <EditForm Model="manualInput" OnValidSubmit="RecordManualAsync" FormName="manual-time">
-                <DataAnnotationsValidator /><ValidationSummary />
-                <label>Horas<InputNumber @bind-Value="manualInput.Hours" step="0.25" /></label>
-                <label>Nota (opcional)<InputText @bind-Value="manualInput.Note" /></label>
-                <button type="submit">Guardar tiempo</button>
-            </EditForm>
-        }
-
-        @if (detail.Records.Count > 0)
-        {
-            <h3>Registros recientes</h3>
-            <ul>
-                @foreach (var record in detail.Records)
+                @if (detailBlockId is not null)
                 {
-                    <li>@RecordText(record)</li>
+                    <div class="block-hours">
+                        <h3>Horas planeadas del bloque</h3>
+                        @if (blockHoursInput.MaxHours <= 0)
+                        {
+                            <p class="muted">Esta actividad no tiene horas pendientes para planear.</p>
+                        }
+                        else if (showBlockHours)
+                        {
+                            <EditForm Model="blockHoursInput" OnValidSubmit="SaveBlockHoursAsync" FormName="block-hours">
+                                <DataAnnotationsValidator /><ValidationSummary />
+                                <label>Horas (máximo @Format(blockHoursInput.MaxHours) pendientes)<InputNumber @bind-Value="blockHoursInput.Hours" step="0.25" max="@Num(blockHoursInput.MaxHours)" /></label>
+                                <div class="form-actions">
+                                    <button type="submit">Guardar horas</button>
+                                    <button type="button" class="secondary" @onclick="() => showBlockHours = false">Cancelar</button>
+                                </div>
+                            </EditForm>
+                        }
+                        else
+                        {
+                            <p class="muted">Planeadas esta semana: @Format(blockHoursInput.Hours) h · máximo @Format(blockHoursInput.MaxHours) h (pendientes).</p>
+                            <button class="secondary" @onclick="() => showBlockHours = true">Editar horas planeadas</button>
+                        }
+                    </div>
                 }
-            </ul>
-        }
 
-        @if (continuations.Count > 0)
-        {
-            <h3>Continuaciones</h3>
-            <ul>
-                @foreach (var c in continuations)
+                @if (showManual)
                 {
-                    <li>@c.FromActivity.Title → @c.ToActivity.Title</li>
+                    <EditForm Model="manualInput" OnValidSubmit="RecordManualAsync" FormName="manual-time">
+                        <DataAnnotationsValidator /><ValidationSummary />
+                        <label>Horas<InputNumber @bind-Value="manualInput.Hours" step="0.25" /></label>
+                        <label>Nota (opcional)<InputText @bind-Value="manualInput.Note" /></label>
+                        <button type="submit">Guardar tiempo</button>
+                    </EditForm>
                 }
-            </ul>
-        }
-    </section>
+
+                @if (detail.Records.Count > 0)
+                {
+                    <h3>Registros recientes</h3>
+                    <ul>
+                        @foreach (var record in detail.Records)
+                        {
+                            <li>@RecordText(record)</li>
+                        }
+                    </ul>
+                }
+
+                @if (continuations.Count > 0)
+                {
+                    <h3>Continuaciones</h3>
+                    <ul>
+                        @foreach (var c in continuations)
+                        {
+                            <li>@c.FromActivity.Title → @c.ToActivity.Title</li>
+                        }
+                    </ul>
+                }
+
+            </div>
+        </section>
+    </div>
 }
 
 @code {
-    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; }
+    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; public ActivityStatus Status; public bool HasOpenSession; }
 
     private List<ActivityService.ActivityRow> pool = [];
     private List<BlockVm> blocks = [];
@@ -194,6 +230,11 @@
     private int? selectedId;
     private bool showManual;
     private readonly ManualTimeInput manualInput = new();
+    private int? detailBlockId;
+    private bool showBlockHours;
+    private readonly BlockHoursInput blockHoursInput = new();
+    private ElementReference detailModal;
+    private bool focusModal;
     private DateOnly weekStart;
     private decimal registeredTotal;
     private List<Template> templates = [];
@@ -290,9 +331,12 @@
             var personId = await Access.PersonIdAsync();
             var allRows = await Activities.ListRowsAsync(personId);
             var rowsById = allRows.ToDictionary(r => r.Activity.Id);
+            var openSessionIds = await Time.ListOpenSessionActivityIdsAsync();
             foreach (var block in blocks)
             {
                 if (!rowsById.TryGetValue(block.ActivityId, out var row)) continue;
+                block.Status = row.Activity.Status;
+                block.HasOpenSession = openSessionIds.Contains(block.ActivityId);
                 block.Progress = row.Activity.Status == ActivityStatus.Completed ? 1m
                     : row.Activity.CurrentEstimateHours > 0
                         ? Math.Clamp(row.RecordedHours / row.Activity.CurrentEstimateHours, 0m, 1m) : 0m;
@@ -319,12 +363,50 @@
     {
         selectedId = id;
         showManual = false;
+        showBlockHours = false;
         await LoadDetailAsync(id);
+        focusModal = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusModal)
+        {
+            focusModal = false;
+            try { await detailModal.FocusAsync(); }
+            catch { /* el modal aún no está en el DOM */ }
+        }
+    }
+
+    private void CloseDetail()
+    {
+        detail = null;
+        selectedId = null;
+        showManual = false;
+        showBlockHours = false;
+        detailBlockId = null;
+        continuations = [];
+    }
+
+    private void OnDetailKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseDetail();
     }
 
     private async Task LoadDetailAsync(int id)
     {
-        try { detail = await Time.GetDetailAsync(id); continuations = await Activities.ListContinuationsAsync(id); }
+        try
+        {
+            detail = await Time.GetDetailAsync(id);
+            continuations = await Activities.ListContinuationsAsync(id);
+            var block = blocks.FirstOrDefault(b => b.ActivityId == id);
+            detailBlockId = block?.BlockId;
+            if (block is not null && detail is not null)
+            {
+                blockHoursInput.Hours = block.Hours;
+                blockHoursInput.MaxHours = Math.Max(0m, detail.RemainingHours);
+            }
+        }
         catch (Exception ex) { error = ex.Message; }
     }
 
@@ -346,6 +428,18 @@
     {
         if (detail is null) return;
         try { await Time.RecordManualAsync(detail.Activity.Id, manualInput.Hours, manualInput.Note); showManual = false; await RefreshAfterDetailAsync(); }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task SaveBlockHoursAsync()
+    {
+        if (detailBlockId is not int blockId) return;
+        try
+        {
+            await Plan.SetBlockHoursAsync(blockId, blockHoursInput.Hours);
+            showBlockHours = false;
+            await RefreshAfterDetailAsync();
+        }
         catch (Exception ex) { error = ex.Message; }
     }
 
@@ -378,6 +472,8 @@
 
     private static string Format(decimal value) => value.ToString("0.##") + " h";
     private static string Pct(decimal value, decimal total) => total <= 0 ? "0" : (value / total * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    private static string Num(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    private static string BarClass(BlockVm block) => block.HasOpenSession ? "running" : block.Status == ActivityStatus.InProgress ? "in-progress" : "";
 
     private static string Status(ActivityStatus status) => status switch
     {

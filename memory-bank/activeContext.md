@@ -1,6 +1,6 @@
 # Active context
 
-Actualizado: 2026-10-21 (America/Denver).
+Actualizado: 2026-10-22 (America/Denver).
 
 ## Redefinición del producto (vigente)
 
@@ -9,11 +9,11 @@ Se descartó por completo el enfoque anterior (cronograma por fechas/Gantt, mile
 ## Estado implementado (Etapas 1 a 7)
 
 - Stack sin cambio: .NET 10, Blazor Interactive Server, EF Core + SQL Server (base `projectManager`, recreada vacía).
-- Modelo de dominio nuevo: `Person` (+`PersonWorkday`), `Initiative`, `Project`, `Activity`, `ActivityDependency`, `WeeklyPlan`, `PlanBlock`, `WorkRecord`, `Template`, `TemplateItem`. Las actividades **no** requieren fechas.
+- Modelo de dominio nuevo: `Person` (+`PersonWorkday`), `Initiative`, `Project`, `Activity`, `ActivityDependency`, `WeeklyPlan`, `PlanBlock`, `WorkRecord`, `Template`, `TemplateItem`, `Continuation`. Las actividades **no** requieren fechas.
 - Login provisional por selección de persona (sin contraseña), cookie de sesión, roles Administrador/Usuario.
-- Servicios: `WorkAccess` (permisos), `PersonService`, `ProjectService` (iniciativas y proyectos), `ActivityService` (actividades sin fechas, dependencias con validación de ciclos, horas pendientes y continuaciones), `WorkRecordService` (sesiones, registro manual, contador único, completar), `WeeklyPlanService` (plan semanal y bloques), `WeekLayoutCalculator` (regla pura de colocación), `PanoramaService` (panorama y riesgo), `RiskCalculator` (regla pura de capacidad compartida), `TemplateService` (plantillas de carreras y generación), `TemplateRules` y `PlanningRules` (reglas puras).
-- Pantallas base: `/login`, `/mi-semana` (navegación semanal, métricas, pool de actividades colapsable con arrastre al timeline, timeline con barras proporcionales, reordenamiento vertical por arrastre y detalle inferior con registro de tiempo), `/initiatives` (vista de solo lectura de iniciativas y proyectos con métricas, banner de riesgo, auto-refresco y pantalla completa), `/administracion` (personas, iniciativas, proyectos, actividades y plantillas).
-- Verificado: build sin errores/advertencias, 29 pruebas xUnit (PlanningRules, WorkAccess, WeekLayoutCalculator, RiskCalculator y TemplateRules), migraciones `InitialModel` y `Continuations` aplicadas sobre base vacía con semilla del Administrador (Persona Id=1).
+- Servicios: `WorkAccess` (permisos), `PersonService`, `ProjectService` (iniciativas y proyectos), `ActivityService` (actividades sin fechas, dependencias con validación de ciclos, horas pendientes y continuaciones), `WorkRecordService` (sesiones, registro manual, contador único, completar y `ListOpenSessionActivityIdsAsync`), `WeeklyPlanService` (plan semanal y bloques), `WeekLayoutCalculator` (regla pura de colocación), `PanoramaService` (panorama y riesgo), `RiskCalculator` (regla pura de capacidad compartida), `TemplateService` (plantillas de carreras y generación), `TemplateRules` y `PlanningRules` (reglas puras). `BlockHoursInput` valida las horas planeadas del bloque (máximo = pendientes).
+- Pantallas base: `/login`, `/mi-semana` (navegación semanal, métricas, pool de actividades colapsable con arrastre al timeline, timeline con barras proporcionales y estados de trabajo, reordenamiento vertical por arrastre y detalle de la actividad en modal con registro de tiempo y edición de horas del bloque), `/initiatives` (vista de solo lectura de iniciativas y proyectos con métricas, banner de riesgo, auto-refresco y pantalla completa), `/administracion` (personas, iniciativas, proyectos, actividades y plantillas).
+- Verificado: build sin errores/advertencias, 33 pruebas xUnit (PlanningRules, WorkAccess, WeekLayoutCalculator, RiskCalculator, TemplateRules y BlockHoursInput), migraciones `InitialModel`, `Continuations` y `WorkweekEightFive` aplicadas sobre base vacía con semilla del Administrador (Persona Id=1).
 
 ## Siguiente
 
@@ -23,6 +23,7 @@ MVP completo (Etapas 1–7). Pendientes diferidos (no bloquean): login real, con
 
 - Jornada confirmada: 8 h de lunes a viernes, 5 h el sábado y 0 el domingo (45 h/sem). Aplicada a Edgar y Pablo; configurable por persona.
 - Tolerancias de desfase de riesgo y contabilidad de continuaciones por cerrar.
+- Revisar posibles sesiones colgadas: "Instalar cierre" acumuló 35.16 h registradas con estimación de 3 h ("Revisar estimación"); verificar si quedó una sesión abierta demasiado tiempo.
 - Login real diferido (proveedor de identidad no elegido).
 
 ## Límites
@@ -144,3 +145,16 @@ Valores de Planeadas en azul, Sin asignar en amarillo y Completadas en verde, us
 ### Relleno verde en barras (2026-10-20)
 
 Barras conservan longitud/etiqueta de horas planeadas y añaden relleno verde de tiempo registrado / estimación total actual de la actividad (limitado a 0–100%); actividad completada explícitamente llena la barra. Múltiples bloques de la misma actividad usan la misma proporción. Es indicador de consumo de esfuerzo, no medición independiente de avance físico ni finalización automática; se conserva la regla de revisar estimación al agotarse. Los datos actuales no incluyen porcentaje de avance físico. Verificación visual pendiente.
+
+### Editar horas planeadas del bloque (2026-10-22)
+
+Aclarado: la barra del timeline ya muestra las horas planeadas del bloque (`PlanBlock.PlannedHours`); coincidían con las pendientes porque al arrastrar del pool se inicializan con `RemainingHours`. Se conserva esa lógica de arrastre (el reordenamiento vertical solo cambia la posición). Se añadió en el detalle de la actividad un editor de las horas planeadas del bloque de la semana visible, con máximo = horas pendientes de la actividad (estimación − registradas). Validación en `BlockHoursInput` (máximo dinámico) y en `WeeklyPlanService.SetBlockHoursAsync` (servidor). Nuevo `BlockHoursInputTests` (4 pruebas). Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
+
+### Detalle de la actividad como modal (2026-10-22)
+
+El detalle de la actividad (antes al fondo de la página) ahora se abre como modal sobre un fondo oscurecido, con encabezado, botón ✕ y botón Cerrar. Cierra con clic en el fondo, con ✕, con Cerrar o con Escape; el enfoque al modal se hace con `ElementReference.FocusAsync` (sin JS propio). El contenido no cambió: estado, métricas, Iniciar/Pausar/Reanudar, Registrar tiempo, Completar, Continuar, edición de horas del bloque, registros y continuaciones; el error de las acciones del modal se muestra dentro del modal. Estilos nuevos en `app.css` (`.modal-backdrop`, `.modal`, `.modal-head`, `.modal-close`). Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
+
+### Ajustes del modal y barras en curso (2026-10-22)
+
+Se quitó el botón Cerrar del modal (quedan la ✕, el clic en el fondo y Escape). El nombre del proyecto en el modal usa la clase `.project-name` (color acento). Las barras se distinguen por estado de trabajo: amarillo brillante (`schedule-bar.running`, variable `--running`, con brillo) si la actividad tiene una sesión abierta (contador activo) y amarillo pálido (`schedule-bar.in-progress`, variable `--paused`) si está iniciada pero pausada. Se añadieron `Status` y `HasOpenSession` a `BlockVm` y `WorkRecordService.ListOpenSessionActivityIdsAsync` para conocer las sesiones abiertas. Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
+
