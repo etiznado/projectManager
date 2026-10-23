@@ -44,7 +44,32 @@ public sealed class ActivityService(IDbContextFactory<ProjectManagerDbContext> f
         return await query.OrderBy(x => x.CreatedAt).ToListAsync();
     }
 
-    public async Task<Activity> CreateAsync(ActivityInput input)
+    public Task<Activity> CreateAsync(ActivityInput input) => CreateCoreAsync(input, ownWorkOnly: false);
+
+    public Task<Activity> CreateOwnAsync(ActivityInput input) => CreateCoreAsync(input, ownWorkOnly: true);
+
+    public async Task<Activity> UpdateAsync(int activityId, ActivityInput input)
+    {
+        await access.RequireAdminAsync();
+        var errors = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(input, new ValidationContext(input), errors, true) || string.IsNullOrWhiteSpace(input.Title))
+            throw new ArgumentException(errors.Count > 0 ? string.Join(" ", errors.Select(x => x.ErrorMessage)) : "Captura el título.");
+        await using var db = await factory.CreateDbContextAsync();
+        var activity = await db.Activities.SingleOrDefaultAsync(x => x.Id == activityId)
+            ?? throw new ArgumentException("La actividad no existe.");
+        if (input.ProjectId is int projectId && !await db.Projects.AnyAsync(x => x.Id == projectId))
+            throw new ArgumentException("Selecciona un proyecto válido.");
+        if (input.PersonId is int personId && !await db.People.AnyAsync(x => x.Id == personId && x.IsActive))
+            throw new ArgumentException("Selecciona un responsable activo.");
+        activity.Title = input.Title.Trim();
+        activity.ProjectId = input.ProjectId;
+        activity.PersonId = input.PersonId;
+        activity.CurrentEstimateHours = input.CurrentEstimateHours;
+        await db.SaveChangesAsync();
+        return activity;
+    }
+
+    private async Task<Activity> CreateCoreAsync(ActivityInput input, bool ownWorkOnly)
     {
         await access.RequireAuthenticatedAsync();
         var errors = new List<ValidationResult>();
@@ -52,11 +77,17 @@ public sealed class ActivityService(IDbContextFactory<ProjectManagerDbContext> f
             throw new ArgumentException(string.Join(" ", errors.Select(x => x.ErrorMessage)));
         var isAdmin = await access.IsAdminAsync();
         await using var db = await factory.CreateDbContextAsync();
-        if (input.ProjectId is int projectId && !await db.Projects.AnyAsync(x => x.Id == projectId))
-            throw new ArgumentException("Selecciona un proyecto válido.");
-        int? personId = isAdmin
+        int? personId = ownWorkOnly
+            ? await access.PersonIdAsync() ?? throw new ArgumentException("Selecciona un usuario válido.")
+            : isAdmin
             ? input.PersonId
             : await access.PersonIdAsync() ?? throw new ArgumentException("Selecciona un usuario válido.");
+        if (input.ProjectId is int projectId)
+        {
+            var project = await db.Projects.AsNoTracking().SingleOrDefaultAsync(x => x.Id == projectId);
+            if (project is null || !WorkAccess.CanCreateActivityInProject(isAdmin, ownWorkOnly, personId, project.PersonId))
+                throw new ArgumentException("Selecciona un proyecto disponible para ti.");
+        }
         if (personId is int pid && !await db.People.AnyAsync(x => x.Id == pid))
             throw new ArgumentException("Selecciona un responsable válido.");
         var entity = new Activity
@@ -68,9 +99,11 @@ public sealed class ActivityService(IDbContextFactory<ProjectManagerDbContext> f
             Status = ActivityStatus.Pending
         };
         db.Activities.Add(entity);
+        await using var transaction = await db.Database.BeginTransactionAsync();
         await db.SaveChangesAsync();
         if (input.PredecessorIds.Count > 0)
             await SetDependenciesCoreAsync(db, entity.Id, input.PredecessorIds);
+        await transaction.CommitAsync();
         return entity;
     }
 
@@ -90,6 +123,9 @@ public sealed class ActivityService(IDbContextFactory<ProjectManagerDbContext> f
         if (ids.Contains(activityId)) throw new ArgumentException("Una actividad no puede depender de sí misma.");
         if (ids.Count > 0 && await db.Activities.CountAsync(x => ids.Contains(x.Id)) != ids.Count)
             throw new ArgumentException("Selecciona actividades existentes.");
+        if (!await access.IsAdminAsync() && ids.Count > 0 &&
+            await db.Activities.CountAsync(x => ids.Contains(x.Id) && x.PersonId == activity.PersonId) != ids.Count)
+            throw new UnauthorizedAccessException("Selecciona predecesoras asignadas a ti.");
 
         var allIds = await db.Activities.Select(x => x.Id).ToListAsync();
         var edges = await db.ActivityDependencies

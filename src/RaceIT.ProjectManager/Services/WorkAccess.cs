@@ -12,6 +12,10 @@ public sealed class WorkAccess(AuthenticationStateProvider authentication)
     public static bool IsAdmin(ClaimsPrincipal user) => user.IsInRole("Administrador");
     public static int? PersonIdOf(ClaimsPrincipal user) =>
         int.TryParse(user.FindFirst("PersonId")?.Value, out var id) ? id : null;
+    public static bool CanCreateActivityInProject(bool isAdmin, bool ownWorkOnly, int? activityPersonId, int? projectPersonId) =>
+        isAdmin && !ownWorkOnly || activityPersonId is not null && activityPersonId == projectPersonId;
+    public static bool CanEditProject(bool isAdmin, int? currentPersonId, int? projectPersonId) =>
+        isAdmin || currentPersonId is not null && currentPersonId == projectPersonId;
     public static bool Allows(ClaimsPrincipal user, WorkPermission permission) =>
         user.Identity?.IsAuthenticated == true &&
         (IsAdmin(user) ||

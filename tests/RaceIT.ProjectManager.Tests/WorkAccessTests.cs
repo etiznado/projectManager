@@ -42,4 +42,22 @@ public sealed class WorkAccessTests
 
     [Fact]
     public void Allows_anonymous_is_denied() => Assert.False(WorkAccess.Allows(Anonymous(), WorkPermission.ReadOwnWork));
+
+    [Theory]
+    [InlineData(true, true, 1, 2, false)]
+    [InlineData(true, true, 1, 1, true)]
+    [InlineData(false, false, 1, 2, false)]
+    [InlineData(false, false, 1, 1, true)]
+    [InlineData(true, false, 1, 2, true)]
+    public void Activity_project_policy_distinguishes_own_work_from_global_admin(
+        bool isAdmin, bool ownWorkOnly, int activityPersonId, int projectPersonId, bool expected) =>
+        Assert.Equal(expected, WorkAccess.CanCreateActivityInProject(isAdmin, ownWorkOnly, activityPersonId, projectPersonId));
+
+    [Theory]
+    [InlineData(false, 1, 1, true)]
+    [InlineData(false, 1, 2, false)]
+    [InlineData(false, 1, null, false)]
+    [InlineData(true, 1, 2, true)]
+    public void Project_edit_policy_checks_owner_or_admin(bool isAdmin, int currentPersonId, int? projectPersonId, bool expected) =>
+        Assert.Equal(expected, WorkAccess.CanEditProject(isAdmin, currentPersonId, projectPersonId));
 }

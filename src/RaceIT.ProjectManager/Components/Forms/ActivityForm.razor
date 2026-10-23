@@ -1,0 +1,105 @@
+@inject ActivityService Activities
+@inject ProjectService Projects
+@inject PersonService People
+@inject WorkAccess Access
+
+@if (error is not null) { <p role="alert">@error</p> }
+<EditForm Model="input" OnValidSubmit="SaveAsync" FormName="activity">
+    <DataAnnotationsValidator /><ValidationSummary />
+    <label>Título<InputText @bind-Value="input.Title" /></label>
+    <label>Proyecto (opcional)
+        <InputSelect @bind-Value="input.ProjectId">
+            <option value="">Sin proyecto (tarea suelta)</option>
+            @foreach (var project in projects) { <option value="@project.Id">@project.Name</option> }
+        </InputSelect>
+    </label>
+    @if (isAdmin && !AssignToCurrentPerson)
+    {
+        <label>Responsable (opcional)
+            <InputSelect @bind-Value="input.PersonId">
+                <option value="">Sin responsable</option>
+                @foreach (var person in people) { <option value="@person.Id">@person.Name</option> }
+            </InputSelect>
+        </label>
+    }
+    <label>Estimación total (horas)<InputNumber @bind-Value="input.CurrentEstimateHours" step="0.25" /></label>
+    <div class="form-actions">
+        <button type="submit" disabled="@saving">@(ExistingActivity is null ? "Crear actividad" : "Guardar cambios")</button>
+        @if (ExistingActivity is not null)
+        {
+            <button type="button" class="secondary" disabled="@saving" @onclick="() => OnCancel.InvokeAsync()">Cancelar edición</button>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public bool AssignToCurrentPerson { get; set; }
+    [Parameter] public Activity? ExistingActivity { get; set; }
+    [Parameter] public EventCallback<Activity> OnCreated { get; set; }
+    [Parameter] public EventCallback<Activity> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private ActivityInput input = new();
+    private List<Project> projects = [];
+    private List<Person> people = [];
+    private bool isAdmin;
+    private bool saving;
+    private string? error;
+    private int? initializedActivityId;
+
+    protected override void OnParametersSet()
+    {
+        if (initializedActivityId == ExistingActivity?.Id) return;
+        initializedActivityId = ExistingActivity?.Id;
+        input = ExistingActivity is null ? new() : new ActivityInput
+        {
+            Title = ExistingActivity.Title,
+            ProjectId = ExistingActivity.ProjectId,
+            PersonId = ExistingActivity.PersonId,
+            CurrentEstimateHours = ExistingActivity.CurrentEstimateHours
+        };
+        error = null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAdmin = await Access.IsAdminAsync();
+        await ReloadOptionsAsync();
+        if (AssignToCurrentPerson && isAdmin) input.PersonId = await Access.PersonIdAsync();
+    }
+
+    private async Task ReloadOptionsAsync()
+    {
+        projects = AssignToCurrentPerson
+            ? await Projects.ListOwnProjectsAsync()
+            : await Projects.ListProjectsAsync();
+        if (isAdmin && !AssignToCurrentPerson) people = await People.ListActiveAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving) return;
+        saving = true;
+        error = null;
+        try
+        {
+            if (ExistingActivity is not null)
+            {
+                var saved = await Activities.UpdateAsync(ExistingActivity.Id, input);
+                await OnSaved.InvokeAsync(saved);
+            }
+            else
+            {
+                var activity = AssignToCurrentPerson
+                    ? await Activities.CreateOwnAsync(input)
+                    : await Activities.CreateAsync(input);
+                input = new();
+                if (AssignToCurrentPerson && isAdmin) input.PersonId = await Access.PersonIdAsync();
+                await ReloadOptionsAsync();
+                await OnCreated.InvokeAsync(activity);
+            }
+        }
+        catch (Exception ex) { error = ex.Message; }
+        finally { saving = false; }
+    }
+}

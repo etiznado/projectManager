@@ -2,6 +2,10 @@
 
 20 de octubre de 2026. Documento de diseño consolidado; no implica que estas funciones ya existan. Sustituye las propuestas anteriores cuando hubo cambios. La sesión no incluyó implementación.
 
+Acuerdo posterior (2026-10-22): se aplaza el uso de dependencias al crear actividades. El formulario de creación solo captura título, proyecto opcional, responsable cuando aplica y estimación. Las referencias a dependencias de este diseño quedan como contexto histórico para una posible etapa futura.
+
+Acuerdo posterior (2026-10-23): en Administración, el formulario de Personas incluye la jornada diaria editable de lunes a domingo al crear y editar. Cambiar la bolsa semanal de referencia no ajusta las horas diarias; la suma de la jornada puede diferir de la bolsa.
+
 ## Objetivo y contexto
 
 Aplicación para mostrar en una TV de 32 pulgadas el estado de iniciativas y proyectos y el plan semanal del empleado, con avance real y alertas de riesgo. El administrador y el empleado deben poder entender cómo va el trabajo.
@@ -188,4 +192,5 @@ Revisar primero el código existente, identificar lo que ya funciona y lo que me
 ## Renders de referencia
 
 Los PNG de entrega ilustran el panorama personal y Mi semana con paneles expandidos y colapsados. Sus datos son ejemplos, no compromisos reales del usuario. Los estados, controles y reglas escritos en este documento son la referencia funcional; los renders no sustituyen las reglas de cálculo ni garantizan medidas exactas de las barras.
-`nAcuerdo posterior (2026-10-20): jornada de referencia confirmada de 45 h: lunes a viernes 8 h, sábado 5 h, domingo 0 h. Reemplaza el ejemplo de 7.5 h por día.
+
+Acuerdo posterior (2026-10-20): jornada de referencia confirmada de 45 h: lunes a viernes 8 h, sábado 5 h, domingo 0 h. Reemplaza el ejemplo de 7.5 h por día; el acuerdo del 2026-10-23 permite editarla sin vincularla automáticamente a la bolsa semanal.

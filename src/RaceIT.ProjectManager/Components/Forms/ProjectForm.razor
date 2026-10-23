@@ -1,0 +1,90 @@
+@inject ProjectService Projects
+@inject PersonService People
+@inject WorkAccess Access
+
+@if (error is not null) { <p role="alert">@error</p> }
+<EditForm Model="input" OnValidSubmit="SaveAsync" FormName="project">
+    <DataAnnotationsValidator /><ValidationSummary />
+    <label>Nombre<InputText @bind-Value="input.Name" /></label>
+    @if (isAdmin)
+    {
+        <label>Iniciativa (opcional)
+            <InputSelect @bind-Value="input.InitiativeId">
+                <option value="">Sin iniciativa</option>
+                @foreach (var initiative in Initiatives) { <option value="@initiative.Id">@initiative.Name</option> }
+            </InputSelect>
+        </label>
+        <label>Responsable (opcional)
+            <InputSelect @bind-Value="input.PersonId">
+                <option value="">Sin responsable</option>
+                @foreach (var person in people) { <option value="@person.Id">@person.Name</option> }
+            </InputSelect>
+        </label>
+    }
+    <label>Fecha meta (opcional)<InputDate @bind-Value="input.TargetDate" class="calendar-date" /></label>
+    <div class="form-actions">
+        <button type="submit" disabled="@saving">@(ExistingProject is null ? "Crear proyecto" : "Guardar cambios")</button>
+        @if (ExistingProject is not null)
+        {
+            <button type="button" class="secondary" disabled="@saving" @onclick="() => OnCancel.InvokeAsync()">Cancelar edición</button>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public IReadOnlyList<Initiative> Initiatives { get; set; } = [];
+    [Parameter] public Project? ExistingProject { get; set; }
+    [Parameter] public EventCallback<Project> OnCreated { get; set; }
+    [Parameter] public EventCallback<Project> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private ProjectInput input = new();
+    private List<Person> people = [];
+    private bool isAdmin;
+    private bool saving;
+    private string? error;
+    private int? initializedProjectId;
+
+    protected override void OnParametersSet()
+    {
+        if (initializedProjectId == ExistingProject?.Id) return;
+        initializedProjectId = ExistingProject?.Id;
+        input = ExistingProject is null ? new() : new ProjectInput
+        {
+            Name = ExistingProject.Name,
+            InitiativeId = ExistingProject.InitiativeId,
+            PersonId = ExistingProject.PersonId,
+            TargetDate = ExistingProject.TargetDate
+        };
+        error = null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAdmin = await Access.IsAdminAsync();
+        if (isAdmin) people = await People.ListActiveAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving) return;
+        saving = true;
+        error = null;
+        try
+        {
+            if (ExistingProject is null)
+            {
+                var created = await Projects.CreateProjectAsync(input);
+                input = new();
+                await OnCreated.InvokeAsync(created);
+            }
+            else
+            {
+                var saved = await Projects.UpdateProjectAsync(ExistingProject.Id, input);
+                await OnSaved.InvokeAsync(saved);
+            }
+        }
+        catch (Exception ex) { error = ex.Message; }
+        finally { saving = false; }
+    }
+}

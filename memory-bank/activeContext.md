@@ -1,6 +1,6 @@
 # Active context
 
-Actualizado: 2026-10-22 (America/Denver).
+Actualizado: 2026-10-23 (America/Denver).
 
 ## Redefinición del producto (vigente)
 
@@ -18,6 +18,58 @@ Se descartó por completo el enfoque anterior (cronograma por fechas/Gantt, mile
 ## Siguiente
 
 MVP completo (Etapas 1–7). Pendientes diferidos (no bloquean): login real, contabilidad de continuaciones, timeline visual con líneas punteadas y riesgo semanal.
+
+## Creación para empleados (2026-10-22)
+
+- El usuario decidió conservar la creación de iniciativas exclusivamente para Administrador. Usuario puede crear proyectos independientes (sin iniciativa) y actividades propias.
+- Nueva página `/mis-proyectos` para Usuario, enlazada desde la navegación; lista sus proyectos y permite crear uno sin iniciativa. `ProjectService` filtra su listado por responsable y rechaza en servidor un `InitiativeId` enviado por Usuario.
+- Mi semana incorpora «Nueva actividad» en el pool: abre un modal con el formulario de actividad. Al crear, refresca el pool de la semana visible sin agregar automáticamente un bloque. El formulario ofrece proyectos propios al usuario; `ActivityService` valida en servidor que el proyecto sea propio.
+- Administración reutiliza los componentes `ProjectForm` y `ActivityForm`; iniciativas, personas y plantillas siguen en Administración.
+- Verificado: `dotnet build RaceIT.ProjectManager.sln` 0 errores/advertencias y `dotnet test RaceIT.ProjectManager.sln --no-build` 33/33. Pendiente: interacción visual y persistencia SQL de estos flujos en uso real.
+
+## Dependencias aplazadas en la creación (2026-10-22)
+
+Por decisión del usuario, el formulario compartido `ActivityForm` ya no muestra ni envía predecesoras, tanto en Mi semana como en Administración. El modelo y la lógica del servicio permanecen para una posible recuperación posterior. No se modificaron dependencias ya guardadas ni se cambió el esquema. Verificado: compilación con salida alternativa (`BaseOutputPath=bin/verification/`) y 33/33 pruebas. La salida normal estaba bloqueada por otro proceso; revisión visual pendiente.
+
+## Proyecto propio al crear desde Mi semana (2026-10-22)
+
+El usuario mostró que Edgar (Administrador, PersonId=1) creó la actividad «Nueva» en «Cajones de herramientas» de Pablo (PersonId=2). La opción anterior de Mi semana cargaba todos los proyectos para el administrador y `CreateAsync` permitía cualquier proyecto. Se corrigió: `ActivityForm` en modo `AssignToCurrentPerson` usa `ListOwnProjectsAsync` y `CreateOwnAsync`, que fija al responsable actual y valida la propiedad del proyecto también en servidor. Administración conserva la creación global del administrador. La fila «Nueva» ya guardada no se modificó. Verificado: compilación y 38/38 pruebas, incluidas 5 variantes de la regla de propiedad. Prueba visual y de SQL pendiente.
+
+## Edición de proyectos (2026-10-22)
+
+- El formulario compartido `ProjectForm` permite crear o editar. `/mis-proyectos` ofrece Editar para proyectos asignados al Usuario: nombre y fecha meta. En Administración, Editar permite además cambiar iniciativa y responsable.
+- `ProjectService.UpdateProjectAsync` valida nombre, existencia y propiedad del proyecto. Usuario no puede alterar iniciativa ni responsable, incluso mediante datos enviados manualmente; Administrador puede hacerlo. Se conservan las actividades vinculadas al proyecto.
+- Verificado: compilación en `bin/verification` y 42/42 pruebas xUnit, incluidas 4 variantes nuevas de autorización. Pendiente: interacción visual y persistencia SQL en uso real.
+
+## Administración por secciones (2026-10-22)
+
+La página `/administracion` organiza Personas, Iniciativas, Proyectos, Actividades y Plantillas en botones de sección; solo se ve una categoría a la vez. Proyectos es la sección inicial y conserva su lista, edición y creación. Cambiar de sección limpia errores globales y cierra la edición de proyecto abierta. No se modificaron servicios ni datos. Verificado: compilación y 42/42 pruebas; revisión visual pendiente.
+
+## Confirmación al eliminar plantilla (2026-10-22)
+
+En Administración, Eliminar plantilla abre un modal que muestra su nombre y explica que se quitarán sus elementos mientras las actividades ya generadas permanecen. Solo «Sí, eliminar» llama a `TemplateService.DeleteAsync`; Cancelar, Escape o clic en el fondo cierran el modal. Se impide confirmar dos veces durante el guardado y se muestra el error en el diálogo si falla. Verificado: compilación y 42/42 pruebas existentes; interacción visual pendiente.
+
+## Histórico: editor único de elementos de plantilla (2026-10-22; sustituido por `TemplateForm`)
+
+Esta etapa intermedia usó un selector, `TemplateItemsEditor` y `TemplateService.UpdateItemsAsync` para editar los elementos. Fue sustituida el mismo día por el formulario único de creación/edición descrito abajo. Las actividades ya generadas son copias y no cambian. En esa etapa se verificaron compilación y 46/46 pruebas xUnit; la interacción visual y persistencia SQL quedaron pendientes.
+
+## Administración: formulario único por módulo (2026-10-22; sustituye la disposición anterior)
+
+- En Personas, Iniciativas, Proyectos, Actividades y Plantillas, el mismo formulario sirve para crear o editar: aparece arriba, y la lista de entidades con botón Editar queda abajo. Seleccionar una fila carga sus valores y lleva el enfoque al encabezado del formulario; Guardar o Cancelar edición vuelve al modo de creación.
+- Se añadieron `PersonForm` e `InitiativeForm`, se adaptaron `ProjectForm` y `ActivityForm`, y `TemplateForm` sustituye el editor de solo elementos y el formulario separado de creación. Plantillas permite editar nombre, categoría y elementos en una sola operación. El modal de confirmación para eliminar plantillas sigue vigente.
+- Servicios nuevos: `PersonService.UpdateAsync`, `ProjectService.UpdateInitiativeAsync`, `ActivityService.UpdateAsync` y `TemplateService.UpdateAsync`. Editar actividades no cambia estado, registros, bloques ni dependencias; editar iniciativas/proyectos/personas no modifica entidades hijas. Cambiar el rol propio durante la sesión se rechaza. La regla anterior de escalar la jornada al cambiar la bolsa semanal fue sustituida el 2026-10-23.
+- Verificado: compilación y 49/49 pruebas xUnit con salida `bin/verification`; no se modificaron datos de usuario en SQL. Pendiente: comprobación visual y de persistencia SQL.
+
+## Jornada diaria editable en Personas (2026-10-23)
+
+- Decisión del usuario: cambiar la bolsa semanal deja las horas diarias como están. La bolsa y la suma de la jornada pueden diferir; se muestran ambas, sin forzar igualdad.
+- `PersonForm` incluye `WorkdayEditor` al crear y editar. Muestra lunes a domingo, inicializa una persona nueva con 8/8/8/8/8/5/0 y carga la jornada persistida para edición. El servidor valida siete días únicos y horas de 0 a 24 con máximo dos decimales; guarda bolsa y jornada explícitamente, sin escalado automático.
+- Verificado: compilación y 53/53 pruebas xUnit con salida `bin/verification`. Sin modificación directa de datos de usuario en SQL; pendientes la interacción visual y una prueba de persistencia con SQL Server.
+
+## Selector de calendario en fechas meta (2026-10-23)
+
+- Los dos campos editables de fecha meta (`InitiativeForm` y `ProjectForm`) siguen usando `InputDate`, que permite captura manual y abre el calendario nativo desde el icono dentro del campo. La clase compartida `calendar-date` aplica el tema oscuro al control y deja visible su indicador; `ProjectForm` se usa en Administración y Mis proyectos.
+- Cambio de interfaz sin migración ni modificación de datos. Pendiente: comprobación visual e interacción en navegador.
 
 ## Puntos abiertos (del diseño; no bloquean)
 
@@ -128,7 +180,7 @@ Los controles del pool usan SVG de doble chevrón en lugar del texto >>/<<, cons
 
 ### Jornada confirmada de 45 h (2026-10-20)
 
-El usuario confirmó 8 h de lunes a viernes, 5 h el sábado y 0 el domingo. Sustituye la jornada ilustrativa de 7.5 h/día. PersonService aplica esa distribución para nuevas personas con capacidad 45 h; otras capacidades conservan su reparto anterior. DataSeeder reutiliza esa regla; semilla del modelo actualizada. Migración WorkweekEightFive cambia jornadas anteriores de 7.5 h en personas de capacidad 45 h sin modificar bloques ni registros. Aplicada en SQL local mediante transacción y registrada en __EFMigrationsHistory; lectura posterior confirmó Edgar/Pablo con 8/8/8/8/8/5/0. Build 0 errores/advertencias y 29 pruebas existentes correctas; revisión visual pendiente.
+El usuario confirmó 8 h de lunes a viernes, 5 h el sábado y 0 el domingo. Sustituye la jornada ilustrativa de 7.5 h/día. Esta fue la regla inicial de creación para capacidad 45 h; desde el 2026-10-23, la jornada se captura explícitamente en Personas y no cambia automáticamente con la bolsa. DataSeeder reutiliza la regla inicial; semilla del modelo actualizada. Migración WorkweekEightFive cambia jornadas anteriores de 7.5 h en personas de capacidad 45 h sin modificar bloques ni registros. Aplicada en SQL local mediante transacción y registrada en __EFMigrationsHistory; lectura posterior confirmó Edgar/Pablo con 8/8/8/8/8/5/0. Build 0 errores/advertencias y 29 pruebas existentes correctas; revisión visual pendiente.
 
 ### Etiqueta Completadas (2026-10-20)
 

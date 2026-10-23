@@ -1,0 +1,29 @@
+<fieldset class="workday-editor">
+    <legend>Jornada diaria</legend>
+    <p class="muted">Define las horas de cada día. Cambiar la bolsa semanal no modifica esta jornada.</p>
+    <div class="workday-grid">
+        @foreach (var day in Workdays)
+        {
+            <label>@DayName(day.DayOfWeek)
+                <InputNumber @bind-Value="day.WorkingHours" min="0" max="24" step="0.01" />
+            </label>
+        }
+    </div>
+    <p class="muted">Total de la jornada: @Workdays.Sum(x => x.WorkingHours).ToString("0.##") h · Bolsa semanal: @WeeklyCapacityHours.ToString("0.##") h</p>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public List<WorkdayInput> Workdays { get; set; } = [];
+    [Parameter] public decimal WeeklyCapacityHours { get; set; }
+
+    private static string DayName(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Lunes",
+        DayOfWeek.Tuesday => "Martes",
+        DayOfWeek.Wednesday => "Miércoles",
+        DayOfWeek.Thursday => "Jueves",
+        DayOfWeek.Friday => "Viernes",
+        DayOfWeek.Saturday => "Sábado",
+        _ => "Domingo"
+    };
+}

@@ -7,92 +7,75 @@
 
 <PageTitle>Administración | RaceIT</PageTitle>
 <h1>Administración</h1>
+<nav class="admin-sections" aria-label="Secciones de administración">
+    <button type="button" class="@(section == AdminSection.People ? "selected" : "secondary")" aria-pressed="@(section == AdminSection.People)" @onclick="() => SelectSection(AdminSection.People)">Personas</button>
+    <button type="button" class="@(section == AdminSection.Initiatives ? "selected" : "secondary")" aria-pressed="@(section == AdminSection.Initiatives)" @onclick="() => SelectSection(AdminSection.Initiatives)">Iniciativas</button>
+    <button type="button" class="@(section == AdminSection.Projects ? "selected" : "secondary")" aria-pressed="@(section == AdminSection.Projects)" @onclick="() => SelectSection(AdminSection.Projects)">Proyectos</button>
+    <button type="button" class="@(section == AdminSection.Activities ? "selected" : "secondary")" aria-pressed="@(section == AdminSection.Activities)" @onclick="() => SelectSection(AdminSection.Activities)">Actividades</button>
+    <button type="button" class="@(section == AdminSection.Templates ? "selected" : "secondary")" aria-pressed="@(section == AdminSection.Templates)" @onclick="() => SelectSection(AdminSection.Templates)">Plantillas</button>
+</nav>
 @if (error is not null) { <p role="alert">@error</p> }
 
+@if (section == AdminSection.People)
+{
 <section class="panel">
     <h2>Personas</h2>
+    <h3 tabindex="-1" @ref="formHeading">@(editingPerson is null ? "Nueva persona" : $"Editar persona: {editingPerson.Name}")</h3>
+    <PersonForm @key="editingPerson?.Id ?? 0" ExistingPerson="editingPerson" OnSaved="OnPersonSavedAsync" OnCancel="CancelPersonEdit" />
+    <h3>Personas registradas</h3>
     <ul>
     @foreach (var person in people)
     {
-        <li>@person.Name · @(person.Role == PersonRole.Admin ? "Administrador" : "Usuario") · @person.WeeklyCapacityHours.ToString("0.##") h/sem</li>
+        <li>@person.Name · @(person.Role == PersonRole.Admin ? "Administrador" : "Usuario") · @person.WeeklyCapacityHours.ToString("0.##") h/sem <button type="button" class="secondary project-edit" @onclick="() => EditPerson(person)">Editar</button></li>
     }
     </ul>
-    <h3>Nueva persona</h3>
-    <EditForm Model="personInput" OnValidSubmit="CreatePerson" FormName="person">
-        <DataAnnotationsValidator /><ValidationSummary />
-        <label>Nombre<InputText @bind-Value="personInput.Name" /></label>
-        <label>Correo<InputText @bind-Value="personInput.Email" /></label>
-        <label>Rol
-            <InputSelect @bind-Value="personInput.Role">
-                <option value="@PersonRole.User">Usuario</option>
-                <option value="@PersonRole.Admin">Administrador</option>
-            </InputSelect>
-        </label>
-        <label>Forma de planear
-            <InputSelect @bind-Value="personInput.PlanningMode">
-                <option value="@PlanningMode.Weekly">Semanal</option>
-                <option value="@PlanningMode.ByDeliverables">Por entregas</option>
-            </InputSelect>
-        </label>
-        <label>Bolsa semanal (horas)<InputNumber @bind-Value="personInput.WeeklyCapacityHours" step="0.5" /></label>
-        <button type="submit">Crear persona</button>
-    </EditForm>
 </section>
+}
 
+@if (section == AdminSection.Initiatives)
+{
 <section class="panel">
     <h2>Iniciativas</h2>
+    <h3 tabindex="-1" @ref="formHeading">@(editingInitiative is null ? "Nueva iniciativa" : $"Editar iniciativa: {editingInitiative.Name}")</h3>
+    <InitiativeForm @key="editingInitiative?.Id ?? 0" ExistingInitiative="editingInitiative" OnSaved="OnInitiativeSavedAsync" OnCancel="CancelInitiativeEdit" />
+    <h3>Iniciativas registradas</h3>
     <ul>
     @foreach (var initiative in initiatives)
     {
-        <li>@initiative.Name @if (initiative.TargetDate is DateOnly d) { <span class="muted">· Meta @d.ToString("dd/MM/yyyy")</span> }</li>
+        <li>@initiative.Name @if (initiative.TargetDate is DateOnly d) { <span class="muted">· Meta @d.ToString("dd/MM/yyyy")</span> } <button type="button" class="secondary project-edit" @onclick="() => EditInitiative(initiative)">Editar</button></li>
     }
     </ul>
-    <h3>Nueva iniciativa</h3>
-    <EditForm Model="initiativeInput" OnValidSubmit="CreateInitiative" FormName="initiative">
-        <DataAnnotationsValidator /><ValidationSummary />
-        <label>Nombre<InputText @bind-Value="initiativeInput.Name" /></label>
-        <label>Descripción<InputTextArea @bind-Value="initiativeInput.Description" /></label>
-        <label>Fecha meta (opcional)<InputDate @bind-Value="initiativeInput.TargetDate" /></label>
-        <button type="submit">Crear iniciativa</button>
-    </EditForm>
 </section>
+}
 
+@if (section == AdminSection.Projects)
+{
 <section class="panel">
     <h2>Proyectos</h2>
+    <h3 tabindex="-1" @ref="formHeading">@(editingProject is null ? "Nuevo proyecto" : $"Editar proyecto: {editingProject.Name}")</h3>
+    <ProjectForm @key="editingProject?.Id ?? 0" ExistingProject="editingProject" Initiatives="initiatives" OnCreated="OnProjectSavedAsync" OnSaved="OnProjectSavedAsync" OnCancel="CancelProjectEdit" />
+    <h3>Proyectos registrados</h3>
     <ul>
     @foreach (var project in projects)
     {
-        <li>@project.Name <span class="muted">· @(project.Initiative?.Name ?? "Sin iniciativa") · @(project.Person?.Name ?? "Sin responsable")</span></li>
+        <li>@project.Name <span class="muted">· @(project.Initiative?.Name ?? "Sin iniciativa") · @(project.Person?.Name ?? "Sin responsable")</span> <button type="button" class="secondary project-edit" @onclick="() => EditProject(project)">Editar</button></li>
     }
     </ul>
-    <h3>Nuevo proyecto</h3>
-    <EditForm Model="projectInput" OnValidSubmit="CreateProject" FormName="project">
-        <DataAnnotationsValidator /><ValidationSummary />
-        <label>Nombre<InputText @bind-Value="projectInput.Name" /></label>
-        <label>Iniciativa (opcional)
-            <select @bind="projectInput.InitiativeId">
-                <option value="">Sin iniciativa</option>
-                @foreach (var initiative in initiatives) { <option value="@initiative.Id">@initiative.Name</option> }
-            </select>
-        </label>
-        <label>Responsable (opcional)
-            <select @bind="projectInput.PersonId">
-                <option value="">Sin responsable</option>
-                @foreach (var person in people) { <option value="@person.Id">@person.Name</option> }
-            </select>
-        </label>
-        <label>Fecha meta (opcional)<InputDate @bind-Value="projectInput.TargetDate" /></label>
-        <button type="submit">Crear proyecto</button>
-    </EditForm>
 </section>
+}
 
+@if (section == AdminSection.Activities)
+{
 <section class="panel">
     <h2>Actividades</h2>
+    <h3 tabindex="-1" @ref="formHeading">@(editingActivity is null ? "Nueva actividad" : $"Editar actividad: {editingActivity.Title}")</h3>
+    <ActivityForm @key="editingActivity?.Id ?? 0" ExistingActivity="editingActivity" OnCreated="OnActivitySavedAsync" OnSaved="OnActivitySavedAsync" OnCancel="CancelActivityEdit" />
+    <h3>Actividades registradas</h3>
     @if (rows.Count == 0) { <p class="muted">Sin actividades.</p> }
     else
     {
         <table>
-            <thead><tr><th>Título</th><th>Proyecto</th><th>Responsable</th><th>Estimación</th><th>Pendiente</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Título</th><th>Proyecto</th><th>Responsable</th><th>Estimación</th><th>Pendiente</th><th>Estado</th><th></th></tr></thead>
             <tbody>
             @foreach (var row in rows)
             {
@@ -103,86 +86,108 @@
                     <td>@row.Activity.CurrentEstimateHours.ToString("0.##") h</td>
                     <td>@row.RemainingHours.ToString("0.##") h @if (row.NeedsReestimate) { <span class="badge risk">Revisar estimación</span> }</td>
                     <td>@Status(row.Activity.Status)</td>
+                    <td><button type="button" class="secondary project-edit" @onclick="() => EditActivity(row.Activity)">Editar</button></td>
                 </tr>
             }
             </tbody>
         </table>
     }
-    <h3>Nueva actividad</h3>
-    <EditForm Model="activityInput" OnValidSubmit="CreateActivity" FormName="activity">
-        <DataAnnotationsValidator /><ValidationSummary />
-        <label>Título<InputText @bind-Value="activityInput.Title" /></label>
-        <label>Proyecto (opcional)
-            <select @bind="activityInput.ProjectId">
-                <option value="">Sin proyecto (tarea suelta)</option>
-                @foreach (var project in projects) { <option value="@project.Id">@project.Name</option> }
-            </select>
-        </label>
-        <label>Responsable (opcional)
-            <select @bind="activityInput.PersonId">
-                <option value="">Sin responsable</option>
-                @foreach (var person in people) { <option value="@person.Id">@person.Name</option> }
-            </select>
-        </label>
-        <label>Estimación total (horas)<InputNumber @bind-Value="activityInput.CurrentEstimateHours" step="0.25" /></label>
-        <fieldset>
-            <legend>Predecesoras (dependencias)</legend>
-            @if (allActivities.Count == 0) { <p class="muted">Sin actividades para enlazar.</p> }
-            @foreach (var activity in allActivities)
-            {
-                <label class="check"><input type="checkbox" checked="@selectedPredecessors.Contains(activity.Id)" @onchange="args => TogglePredecessor(activity.Id, args)" /> @activity.Title</label>
-            }
-        </fieldset>
-        <button type="submit">Crear actividad</button>
-    </EditForm>
 </section>
+}
 
+@if (section == AdminSection.Templates)
+{
 <section class="panel">
     <h2>Plantillas de carreras</h2>
-    @foreach (var template in templates)
+    <h3 tabindex="-1" @ref="formHeading">@(SelectedTemplate is null ? "Nueva plantilla" : $"Editar plantilla: {SelectedTemplate.Name}")</h3>
+    <TemplateForm @key="selectedTemplateId" ExistingTemplate="SelectedTemplate" OnSaved="OnTemplateSavedAsync" OnCancel="CancelTemplateEdit" />
+    <h3>Plantillas registradas</h3>
+    @if (templates.Count == 0) { <p class="muted">Sin plantillas.</p> }
+    else
     {
-        <div class="pool-card">
-            <strong>@template.Name</strong> <span class="muted">· @CategoryName(template.Category)</span>
-            <ul>
-            @foreach (var item in template.Items)
-            {
-                <li>@item.Title · @item.EstimatedHours.ToString("0.##") h</li>
-            }
-            </ul>
-            <button class="secondary" @onclick="() => DeleteTemplateAsync(template.Id)">Eliminar</button>
-        </div>
+        <ul>
+        @foreach (var template in templates)
+        {
+            <li>
+                @template.Name <span class="muted">· @CategoryName(template.Category) · @template.Items.Count elementos</span>
+                <button type="button" class="secondary project-edit" @onclick="() => EditTemplate(template)">Editar</button>
+                <button type="button" class="secondary project-edit" @onclick="() => RequestDeleteTemplate(template)">Eliminar</button>
+            </li>
+        }
+        </ul>
     }
-    <h3>Nueva plantilla</h3>
-    <EditForm Model="templateInput" OnValidSubmit="CreateTemplateAsync" FormName="template">
-        <DataAnnotationsValidator /><ValidationSummary />
-        <label>Nombre<InputText @bind-Value="templateInput.Name" /></label>
-        <label>Categoría
-            <InputSelect @bind-Value="templateInput.Category">
-                <option value="@TemplateCategory.Before">Antes</option>
-                <option value="@TemplateCategory.During">Durante</option>
-                <option value="@TemplateCategory.After">Después</option>
-            </InputSelect>
-        </label>
-        <label>Elementos (una línea por elemento: título,horas)<InputTextArea @bind-Value="templateItemsText" /></label>
-        <button type="submit">Crear plantilla</button>
-    </EditForm>
 </section>
+}
+
+@if (templateToDelete is not null)
+{
+    <div class="modal-backdrop" tabindex="-1" @ref="deleteTemplateModal" @onkeydown="OnDeleteTemplateKeyDown" @onclick="CancelDeleteTemplate">
+        <section class="modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-template-title" aria-describedby="delete-template-description" @onclick:stopPropagation>
+            <div class="modal-head">
+                <h2 id="delete-template-title">Eliminar plantilla</h2>
+            </div>
+            <div class="modal-body">
+                <p id="delete-template-description">¿Eliminar la plantilla <strong>@templateToDelete.Name</strong>? Se quitarán sus elementos. Las actividades ya creadas permanecerán.</p>
+                @if (deleteTemplateError is not null) { <p role="alert">@deleteTemplateError</p> }
+                <div class="form-actions">
+                    <button type="button" class="secondary" disabled="@deletingTemplate" @onclick="CancelDeleteTemplate">Cancelar</button>
+                    <button type="button" class="danger" disabled="@deletingTemplate" @onclick="ConfirmDeleteTemplateAsync">@(deletingTemplate ? "Eliminando…" : "Sí, eliminar")</button>
+                </div>
+            </div>
+        </section>
+    </div>
+}
 
 @code {
+    private enum AdminSection { People, Initiatives, Projects, Activities, Templates }
+    private AdminSection section = AdminSection.Projects;
     private List<Person> people = [];
+    private Person? editingPerson;
     private List<Initiative> initiatives = [];
+    private Initiative? editingInitiative;
     private List<Project> projects = [];
-    private List<Activity> allActivities = [];
+    private Project? editingProject;
     private List<ActivityService.ActivityRow> rows = [];
-    private readonly PersonInput personInput = new();
-    private readonly InitiativeInput initiativeInput = new();
-    private readonly ProjectInput projectInput = new();
-    private readonly ActivityInput activityInput = new();
-    private HashSet<int> selectedPredecessors = [];
+    private Activity? editingActivity;
     private List<Template> templates = [];
-    private readonly TemplateInput templateInput = new();
-    private string templateItemsText = "";
+    private int selectedTemplateId;
+    private Template? SelectedTemplate => templates.FirstOrDefault(x => x.Id == selectedTemplateId);
+    private Template? templateToDelete;
+    private string? deleteTemplateError;
+    private bool deletingTemplate;
+    private bool focusDeleteTemplateModal;
+    private ElementReference deleteTemplateModal;
+    private bool focusFormHeading;
+    private ElementReference formHeading;
     private string? error;
+
+    private void SelectSection(AdminSection selected)
+    {
+        section = selected;
+        error = null;
+        editingPerson = null;
+        editingInitiative = null;
+        editingProject = null;
+        editingActivity = null;
+        selectedTemplateId = 0;
+        CancelDeleteTemplate();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusDeleteTemplateModal)
+        {
+            focusDeleteTemplateModal = false;
+            try { await deleteTemplateModal.FocusAsync(); }
+            catch { /* el modal aún no está en el DOM */ }
+        }
+        if (focusFormHeading)
+        {
+            focusFormHeading = false;
+            try { await formHeading.FocusAsync(); }
+            catch { /* el formulario aún no está en el DOM */ }
+        }
+    }
 
     protected override async Task OnInitializedAsync() => await Load();
 
@@ -190,67 +195,74 @@
     {
         try
         {
+            error = null;
             people = await People.ListActiveAsync();
             initiatives = await Projects.ListInitiativesAsync();
             projects = await Projects.ListProjectsAsync();
-            allActivities = await Activities.ListAsync();
             rows = await Activities.ListRowsAsync();
             templates = await Templates.ListAsync();
         }
         catch (Exception ex) { error = ex.Message; }
     }
 
-    private async Task CreatePerson()
+    private void EditPerson(Person person) { editingPerson = person; focusFormHeading = true; }
+    private void CancelPersonEdit() => editingPerson = null;
+    private async Task OnPersonSavedAsync(Person _) { editingPerson = null; await Load(); }
+
+    private void EditInitiative(Initiative initiative) { editingInitiative = initiative; focusFormHeading = true; }
+    private void CancelInitiativeEdit() => editingInitiative = null;
+    private async Task OnInitiativeSavedAsync(Initiative _) { editingInitiative = null; await Load(); }
+
+    private void EditProject(Project project) { editingProject = project; focusFormHeading = true; }
+    private void CancelProjectEdit() => editingProject = null;
+
+    private async Task OnProjectSavedAsync(Project _)
     {
-        try { await People.CreateAsync(personInput); await Load(); }
-        catch (Exception ex) { error = ex.Message; }
+        editingProject = null;
+        await Load();
     }
 
-    private async Task CreateInitiative()
+    private void EditActivity(Activity activity) { editingActivity = activity; focusFormHeading = true; }
+    private void CancelActivityEdit() => editingActivity = null;
+    private async Task OnActivitySavedAsync(Activity _) { editingActivity = null; await Load(); }
+
+    private void EditTemplate(Template template) { selectedTemplateId = template.Id; focusFormHeading = true; }
+    private void CancelTemplateEdit() => selectedTemplateId = 0;
+    private async Task OnTemplateSavedAsync(Template _) { selectedTemplateId = 0; await Load(); }
+
+    private void RequestDeleteTemplate(Template template)
     {
-        try { await Projects.CreateInitiativeAsync(initiativeInput); await Load(); }
-        catch (Exception ex) { error = ex.Message; }
+        templateToDelete = template;
+        deleteTemplateError = null;
+        focusDeleteTemplateModal = true;
     }
 
-    private async Task CreateProject()
+    private void CancelDeleteTemplate()
     {
-        try { await Projects.CreateProjectAsync(projectInput); await Load(); }
-        catch (Exception ex) { error = ex.Message; }
+        if (deletingTemplate) return;
+        templateToDelete = null;
+        deleteTemplateError = null;
     }
 
-    private async Task CreateActivity()
+    private void OnDeleteTemplateKeyDown(KeyboardEventArgs e)
     {
-        activityInput.PredecessorIds = selectedPredecessors.ToList();
-        try { await Activities.CreateAsync(activityInput); selectedPredecessors = []; await Load(); }
-        catch (Exception ex) { error = ex.Message; }
+        if (e.Key == "Escape") CancelDeleteTemplate();
     }
 
-    private void TogglePredecessor(int id, ChangeEventArgs args)
+    private async Task ConfirmDeleteTemplateAsync()
     {
-        if (args.Value is bool isChecked && isChecked) selectedPredecessors.Add(id);
-        else selectedPredecessors.Remove(id);
-    }
-
-    private async Task CreateTemplateAsync()
-    {
-        templateInput.Items = templateItemsText
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(line => line.Split(',', 2))
-            .Select(parts => new TemplateItemInput
-            {
-                Title = parts[0].Trim(),
-                EstimatedHours = parts.Length > 1 && decimal.TryParse(parts[1].Trim(), out var h) ? h : 0
-            })
-            .Where(x => !string.IsNullOrWhiteSpace(x.Title) && x.EstimatedHours > 0)
-            .ToList();
-        try { await Templates.CreateAsync(templateInput); templateInput.Items = []; templateItemsText = ""; await Load(); }
-        catch (Exception ex) { error = ex.Message; }
-    }
-
-    private async Task DeleteTemplateAsync(int id)
-    {
-        try { await Templates.DeleteAsync(id); await Load(); }
-        catch (Exception ex) { error = ex.Message; }
+        if (deletingTemplate || templateToDelete is null) return;
+        deletingTemplate = true;
+        deleteTemplateError = null;
+        try
+        {
+            await Templates.DeleteAsync(templateToDelete.Id);
+            templateToDelete = null;
+            selectedTemplateId = 0;
+            await Load();
+        }
+        catch (Exception ex) { deleteTemplateError = ex.Message; }
+        finally { deletingTemplate = false; }
     }
 
     private static string CategoryName(TemplateCategory category) => category switch

@@ -1,10 +1,10 @@
 # Product context
 
-Última actualización: 2026-10-22 (America/Denver). Describe el modelo vigente de esfuerzo y plan semanal (`Project_Manager_Notas_Diseno.md`); el modelo anterior quedó descartado.
+Última actualización: 2026-10-23 (America/Denver). Describe el modelo vigente de esfuerzo y plan semanal (`Project_Manager_Notas_Diseno.md`); el modelo anterior quedó descartado.
 
 ## Estructura del trabajo
 
-Iniciativa -> proyecto -> actividad. Un proyecto puede ser independiente (sin iniciativa) y una actividad puede ser suelta (sin proyecto). Las actividades se definen por esfuerzo estimado y dependencias, sin fechas obligatorias; se programan después en el plan semanal.
+Iniciativa -> proyecto -> actividad. Un proyecto puede ser independiente (sin iniciativa) y una actividad puede ser suelta (sin proyecto). Las actividades se definen por esfuerzo estimado, sin fechas obligatorias; se programan después en el plan semanal. Las dependencias quedaron aplazadas en el formulario de creación.
 
 ## Separación de conceptos
 
@@ -39,12 +39,23 @@ Login provisional por selección de persona (sin contraseña) con cookie de sesi
 
 - `/login`: selección de usuario (acceso provisional).
 - `/mi-semana`: navegación semanal, métricas (Disponibles, Planeadas, Sin asignar, Completadas), pool colapsable con arrastre al timeline, timeline con barras proporcionales (relleno verde de consumo y borde por estado de trabajo) y detalle de la actividad en modal con registro de tiempo y edición de horas del bloque.
+- `/mis-proyectos`: Usuario consulta sus proyectos, crea proyectos independientes (sin iniciativa) y edita nombre/fecha meta de los asignados.
 - `/initiatives`: vista de solo lectura de iniciativas y proyectos con métricas, banner de riesgo, auto-refresco y pantalla completa.
-- `/administracion`: personas, iniciativas, proyectos, actividades y plantillas (solo Administrador).
+- `/administracion`: personas, iniciativas, proyectos, actividades y plantillas (solo Administrador), organizadas por secciones; se muestra una categoría a la vez.
+
+Administración permite editar proyectos, incluidos iniciativa y responsable. Cambiar el responsable del proyecto no reasigna automáticamente las actividades, que tienen responsable propio.
+Eliminar una plantilla desde Administración requiere confirmación en un diálogo que identifica la plantilla; las actividades generadas anteriormente permanecen.
+En cada sección de Administración el formulario de crear/editar está arriba y la lista de entidades abajo. Pulsar Editar carga la entidad en el mismo formulario; Guardar o Cancelar edición vuelve al modo de creación. Plantillas usa un formulario único para nombre, categoría y elementos; debe quedar al menos un elemento. Los cambios afectan futuras generaciones.
+
+Personas incluye siete controles para la jornada diaria, tanto en alta como en edición. La bolsa semanal es independiente: cambiarla conserva las horas diarias, cuya suma puede diferir de la bolsa. Los campos de fecha meta de Iniciativas y Proyectos permiten escritura manual y muestran el selector de calendario nativo del navegador.
+
+Usuario también puede crear actividades desde un modal de Mi semana. Guardarlas las incorpora al pool, sin agregar un bloque al plan. Crear iniciativas y asociar proyectos a iniciativas corresponde al Administrador.
+
+El modal de Mi semana crea trabajo propio: solo ofrece proyectos del responsable actual, incluso si quien lo usa es Administrador. La creación global del Administrador está en Administración.
 
 ## Reglas acordadas
 
-- Crear una actividad no exige fechas; guarda estimación y dependencias antes de programarla.
+- Crear una actividad no exige fechas; guarda su estimación antes de programarla. El uso de dependencias en el formulario quedó aplazado.
 - Horas pendientes = estimación - tiempo registrado.
 - Las horas planeadas del bloque no pueden superar las horas pendientes de la actividad.
 - Terminar es una acción explícita, independiente de horas.

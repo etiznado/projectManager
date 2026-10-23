@@ -1,0 +1,82 @@
+@inject TemplateService Templates
+
+@if (error is not null) { <p role="alert">@error</p> }
+<EditForm Model="input" OnValidSubmit="SaveAsync" FormName="template">
+    <DataAnnotationsValidator /><ValidationSummary />
+    <label>Nombre<InputText @bind-Value="input.Name" /></label>
+    <label>Categoría
+        <InputSelect @bind-Value="input.Category">
+            <option value="@TemplateCategory.Before">Antes</option>
+            <option value="@TemplateCategory.During">Durante</option>
+            <option value="@TemplateCategory.After">Después</option>
+        </InputSelect>
+    </label>
+    <h3>Elementos</h3>
+    @foreach (var item in input.Items)
+    {
+        <div @key="item" class="template-item-editor">
+            <label>Título<InputText @bind-Value="item.Title" /></label>
+            <label>Horas estimadas<InputNumber @bind-Value="item.EstimatedHours" step="0.25" /></label>
+            <button type="button" class="secondary" disabled="@(saving || input.Items.Count == 1)" @onclick="() => RemoveItem(item)">Quitar</button>
+        </div>
+    }
+    <p class="muted">Los cambios de plantilla afectan futuras generaciones; las actividades ya creadas permanecen.</p>
+    <div class="form-actions">
+        <button type="button" class="secondary" disabled="@saving" @onclick="AddItem">Agregar elemento</button>
+        <button type="submit" disabled="@saving">@(ExistingTemplate is null ? "Crear plantilla" : "Guardar cambios")</button>
+        @if (ExistingTemplate is not null)
+        {
+            <button type="button" class="secondary" disabled="@saving" @onclick="() => OnCancel.InvokeAsync()">Cancelar edición</button>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Template? ExistingTemplate { get; set; }
+    [Parameter] public EventCallback<Template> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private TemplateEditorInput input = new();
+    private int? initializedTemplateId;
+    private bool saving;
+    private string? error;
+
+    protected override void OnParametersSet()
+    {
+        if (initializedTemplateId == ExistingTemplate?.Id) return;
+        initializedTemplateId = ExistingTemplate?.Id;
+        input = ExistingTemplate is null ? new() : new TemplateEditorInput
+        {
+            Name = ExistingTemplate.Name,
+            Category = ExistingTemplate.Category,
+            Items = ExistingTemplate.Items.OrderBy(x => x.Order).ThenBy(x => x.Id)
+                .Select(x => new TemplateItemEditInput { Id = x.Id, Title = x.Title, EstimatedHours = x.EstimatedHours })
+                .ToList()
+        };
+        error = null;
+    }
+
+    private void AddItem() => input.Items.Add(new TemplateItemEditInput());
+
+    private void RemoveItem(TemplateItemEditInput item)
+    {
+        if (input.Items.Count > 1) input.Items.Remove(item);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving) return;
+        saving = true;
+        error = null;
+        try
+        {
+            var saved = ExistingTemplate is null
+                ? await Templates.CreateAsync(input)
+                : await Templates.UpdateAsync(ExistingTemplate.Id, input);
+            input = new();
+            await OnSaved.InvokeAsync(saved);
+        }
+        catch (Exception ex) { error = ex.Message; }
+        finally { saving = false; }
+    }
+}

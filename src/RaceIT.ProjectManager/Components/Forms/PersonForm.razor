@@ -1,0 +1,80 @@
+@inject PersonService People
+
+@if (error is not null) { <p role="alert">@error</p> }
+<EditForm Model="input" OnValidSubmit="SaveAsync" FormName="person">
+    <DataAnnotationsValidator /><ValidationSummary />
+    <label>Nombre<InputText @bind-Value="input.Name" /></label>
+    <label>Correo<InputText @bind-Value="input.Email" /></label>
+    <label>Rol
+        <InputSelect @bind-Value="input.Role">
+            <option value="@PersonRole.User">Usuario</option>
+            <option value="@PersonRole.Admin">Administrador</option>
+        </InputSelect>
+    </label>
+    <label>Forma de planear
+        <InputSelect @bind-Value="input.PlanningMode">
+            <option value="@PlanningMode.Weekly">Semanal</option>
+            <option value="@PlanningMode.ByDeliverables">Por entregas</option>
+        </InputSelect>
+    </label>
+    <label>Bolsa semanal (horas)<InputNumber @bind-Value="input.WeeklyCapacityHours" min="0" step="0.01" /></label>
+    <WorkdayEditor Workdays="input.Workdays" WeeklyCapacityHours="input.WeeklyCapacityHours" />
+    @if (ExistingPerson is not null) { <p class="muted">Los cambios de rol se reflejan al volver a iniciar sesión.</p> }
+    <div class="form-actions">
+        <button type="submit" disabled="@saving">@(ExistingPerson is null ? "Crear persona" : "Guardar cambios")</button>
+        @if (ExistingPerson is not null)
+        {
+            <button type="button" class="secondary" disabled="@saving" @onclick="() => OnCancel.InvokeAsync()">Cancelar edición</button>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Person? ExistingPerson { get; set; }
+    [Parameter] public EventCallback<Person> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private PersonInput input = new();
+    private int? initializedId;
+    private bool saving;
+    private string? error;
+
+    protected override void OnParametersSet()
+    {
+        if (initializedId == ExistingPerson?.Id) return;
+        initializedId = ExistingPerson?.Id;
+        input = ExistingPerson is null ? new() : new PersonInput
+        {
+            Name = ExistingPerson.Name,
+            Email = ExistingPerson.Email,
+            Role = ExistingPerson.Role,
+            PlanningMode = ExistingPerson.PlanningMode,
+            WeeklyCapacityHours = ExistingPerson.WeeklyCapacityHours,
+            Workdays = Enum.GetValues<DayOfWeek>()
+                .OrderBy(day => day == DayOfWeek.Sunday ? 7 : (int)day)
+                .Select(day => new WorkdayInput
+                {
+                    DayOfWeek = day,
+                    WorkingHours = ExistingPerson.Workdays.FirstOrDefault(x => x.DayOfWeek == day)?.WorkingHours ?? 0m
+                }).ToList()
+        };
+        error = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving) return;
+        saving = true;
+        error = null;
+        try
+        {
+            var saved = ExistingPerson is null
+                ? await People.CreateAsync(input)
+                : await People.UpdateAsync(ExistingPerson.Id, input);
+            input = new();
+            await OnSaved.InvokeAsync(saved);
+        }
+        catch (Exception ex) { error = ex.Message; }
+        finally { saving = false; }
+    }
+}

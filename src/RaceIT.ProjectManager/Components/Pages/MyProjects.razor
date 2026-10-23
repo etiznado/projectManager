@@ -1,0 +1,67 @@
+@page "/mis-proyectos"
+@attribute [Authorize(Roles = "Usuario")]
+@inject ProjectService Projects
+
+<PageTitle>Mis proyectos | RaceIT</PageTitle>
+<h1>Mis proyectos</h1>
+<p class="muted">Crea proyectos independientes y actualiza los que tienes asignados.</p>
+@if (error is not null) { <p role="alert">@error</p> }
+
+<section class="panel">
+    <h2>Proyectos</h2>
+    @if (projects.Count == 0)
+    {
+        <p class="muted">Todavía no tienes proyectos.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var project in projects)
+            {
+                <li>
+                    @project.Name
+                    @if (project.Initiative is not null) { <span class="muted">· @project.Initiative.Name</span> }
+                    @if (project.TargetDate is DateOnly date) { <span class="muted">· Meta @date.ToString("dd/MM/yyyy")</span> }
+                    <button class="secondary project-edit" @onclick="() => editingProject = project">Editar</button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@if (editingProject is not null)
+{
+    <section class="panel">
+        <h2>Editar proyecto: @editingProject.Name</h2>
+        <ProjectForm @key="editingProject.Id" ExistingProject="editingProject" OnSaved="OnProjectSavedAsync" OnCancel="CancelEdit" />
+    </section>
+}
+
+<section class="panel">
+    <h2>Nuevo proyecto</h2>
+    <ProjectForm OnCreated="OnProjectCreatedAsync" />
+</section>
+
+@code {
+    private List<Project> projects = [];
+    private Project? editingProject;
+    private string? error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try { projects = await Projects.ListProjectsAsync(); error = null; }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private Task OnProjectCreatedAsync(Project _) => LoadAsync();
+
+    private async Task OnProjectSavedAsync(Project _)
+    {
+        editingProject = null;
+        await LoadAsync();
+    }
+
+    private void CancelEdit() => editingProject = null;
+}

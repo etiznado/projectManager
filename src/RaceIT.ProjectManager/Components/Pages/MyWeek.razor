@@ -42,6 +42,7 @@
         <section class="panel pool">
             <div class="pool-heading">
                 <h2>Actividades disponibles</h2>
+                <button class="secondary pool-create" title="Nueva actividad" aria-label="Nueva actividad" @onclick="OpenCreateActivity">+</button>
                 <button class="pool-collapse" aria-label="Colapsar actividades disponibles" aria-expanded="true" @onclick="() => poolCollapsed = true">
                     <svg class="pool-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 6-6 6 6 6M18 6l-6 6 6 6" /></svg>
                 </button>
@@ -124,6 +125,21 @@
     <label>Año<InputNumber @bind-Value="raceYear" /></label>
     <button @onclick="GenerateAsync">Crear actividades</button>
 </section>
+
+@if (showCreateActivity)
+{
+    <div class="modal-backdrop" tabindex="-1" @ref="createActivityModal" @onkeydown="OnCreateActivityKeyDown" @onclick="CloseCreateActivity">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="create-activity-title" @onclick:stopPropagation>
+            <div class="modal-head">
+                <h2 id="create-activity-title">Nueva actividad</h2>
+                <button class="modal-close" aria-label="Cerrar nueva actividad" @onclick="CloseCreateActivity">✕</button>
+            </div>
+            <div class="modal-body">
+                <ActivityForm AssignToCurrentPerson="true" OnCreated="OnActivityCreatedAsync" />
+            </div>
+        </section>
+    </div>
+}
 
 @if (detail is not null)
 {
@@ -235,6 +251,9 @@
     private readonly BlockHoursInput blockHoursInput = new();
     private ElementReference detailModal;
     private bool focusModal;
+    private ElementReference createActivityModal;
+    private bool showCreateActivity;
+    private bool focusCreateActivityModal;
     private DateOnly weekStart;
     private decimal registeredTotal;
     private List<Template> templates = [];
@@ -370,12 +389,37 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (focusCreateActivityModal)
+        {
+            focusCreateActivityModal = false;
+            try { await createActivityModal.FocusAsync(); }
+            catch { /* el modal aún no está en el DOM */ }
+        }
         if (focusModal)
         {
             focusModal = false;
             try { await detailModal.FocusAsync(); }
             catch { /* el modal aún no está en el DOM */ }
         }
+    }
+
+    private void OpenCreateActivity()
+    {
+        showCreateActivity = true;
+        focusCreateActivityModal = true;
+    }
+
+    private void CloseCreateActivity() => showCreateActivity = false;
+
+    private void OnCreateActivityKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseCreateActivity();
+    }
+
+    private async Task OnActivityCreatedAsync(Activity _)
+    {
+        CloseCreateActivity();
+        await RefreshWeekAsync();
     }
 
     private void CloseDetail()

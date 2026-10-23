@@ -31,7 +31,7 @@ VS Code: F5 con RaceIT.ProjectManager (Blazor). HTTP http://localhost:5208. Si e
 
 ## Pruebas
 
-- 33 pruebas xUnit en `tests/RaceIT.ProjectManager.Tests` (`PlanningRulesTests`, `WorkAccessTests`, `WeekLayoutCalculatorTests`, `RiskCalculatorTests`, `TemplateRulesTests`, `BlockHoursInputTests`), sin requerir SQL Server.
+- 53 pruebas xUnit en `tests/RaceIT.ProjectManager.Tests` (incluyen reglas de planeación, permisos, diseño semanal, riesgo, plantillas, horas de bloque y validación de jornada diaria), sin requerir SQL Server.
 - `dotnet test RaceIT.ProjectManager.sln` no depende de la base.
 
 ## Verificación visual
@@ -40,4 +40,4 @@ No se dispone de navegador automatizable. No presentar compilación/HTTP como pr
 
 ### Jornada confirmada de 45 h (2026-10-20)
 
-El usuario confirmó 8 h de lunes a viernes, 5 h el sábado y 0 el domingo. Sustituye la jornada ilustrativa de 7.5 h/día. PersonService aplica esa distribución para nuevas personas con capacidad 45 h; otras capacidades conservan su reparto anterior. DataSeeder reutiliza esa regla; semilla del modelo actualizada. Migración WorkweekEightFive cambia jornadas anteriores de 7.5 h en personas de capacidad 45 h sin modificar bloques ni registros. Aplicada en SQL local mediante transacción y registrada en __EFMigrationsHistory; lectura posterior confirmó Edgar/Pablo con 8/8/8/8/8/5/0. Build 0 errores/advertencias y 29 pruebas existentes correctas; revisión visual pendiente.
+El usuario confirmó 8 h de lunes a viernes, 5 h el sábado y 0 el domingo. Sustituye la jornada ilustrativa de 7.5 h/día. Esta fue la regla inicial de creación para capacidad 45 h; desde el 2026-10-23, la jornada se captura explícitamente en Personas y no cambia automáticamente con la bolsa. DataSeeder reutiliza la regla inicial; semilla del modelo actualizada. Migración WorkweekEightFive cambia jornadas anteriores de 7.5 h en personas de capacidad 45 h sin modificar bloques ni registros. Aplicada en SQL local mediante transacción y registrada en __EFMigrationsHistory; lectura posterior confirmó Edgar/Pablo con 8/8/8/8/8/5/0. Build 0 errores/advertencias y 29 pruebas existentes correctas; revisión visual pendiente.

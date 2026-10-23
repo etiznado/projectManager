@@ -12,12 +12,31 @@ public sealed class PersonInput : IValidatableObject
     public PlanningMode PlanningMode { get; set; } = PlanningMode.Weekly;
     [Range(typeof(decimal), "0", "100000", ErrorMessage = "La bolsa semanal no puede ser negativa.")]
     public decimal WeeklyCapacityHours { get; set; } = 45;
+    public List<WorkdayInput> Workdays { get; set; } = Enum.GetValues<DayOfWeek>()
+        .OrderBy(day => day == DayOfWeek.Sunday ? 7 : (int)day)
+        .Select(day => new WorkdayInput
+        {
+            DayOfWeek = day,
+            WorkingHours = day == DayOfWeek.Sunday ? 0m : day == DayOfWeek.Saturday ? 5m : 8m
+        }).ToList();
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
         if (!Enum.IsDefined(Role)) yield return new ValidationResult("Selecciona un rol válido.");
         if (!Enum.IsDefined(PlanningMode)) yield return new ValidationResult("Selecciona una forma de planear válida.");
+        if (Workdays is null || Workdays.Count != 7 ||
+            Workdays.Any(x => !Enum.IsDefined(x.DayOfWeek)) ||
+            Workdays.Select(x => x.DayOfWeek).Distinct().Count() != 7)
+            yield return new ValidationResult("Captura los siete días de la jornada.", [nameof(Workdays)]);
+        else if (Workdays.Any(x => x.WorkingHours < 0 || x.WorkingHours > 24 || decimal.Round(x.WorkingHours, 2) != x.WorkingHours))
+            yield return new ValidationResult("Cada día debe tener entre 0 y 24 horas, con hasta dos decimales.", [nameof(Workdays)]);
     }
+}
+
+public sealed class WorkdayInput
+{
+    public DayOfWeek DayOfWeek { get; set; }
+    public decimal WorkingHours { get; set; }
 }
 
 public sealed class InitiativeInput
@@ -53,30 +72,31 @@ public sealed class ActivityInput : IValidatableObject
     }
 }
 
-public sealed class TemplateItemInput : IValidatableObject
-{
-    [Required(ErrorMessage = "Captura el título."), StringLength(200)]
-    public string Title { get; set; } = "";
-    [Range(typeof(decimal), "0.01", "1000000", ErrorMessage = "Las horas deben ser mayores a cero.")]
-    public decimal EstimatedHours { get; set; } = 1;
-
-    public IEnumerable<ValidationResult> Validate(ValidationContext context)
-    {
-        yield break;
-    }
-}
-
-public sealed class TemplateInput : IValidatableObject
+public sealed class TemplateEditorInput : IValidatableObject
 {
     [Required(ErrorMessage = "Captura el nombre."), StringLength(200)]
     public string Name { get; set; } = "";
     public TemplateCategory Category { get; set; } = TemplateCategory.Before;
-    public List<TemplateItemInput> Items { get; set; } = [];
+    public List<TemplateItemEditInput> Items { get; set; } = [new()];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
-        if (!Enum.IsDefined(Category)) yield return new ValidationResult("Selecciona una categoría válida.");
+        if (string.IsNullOrWhiteSpace(Name))
+            yield return new ValidationResult("Captura el nombre.", [nameof(Name)]);
+        if (!Enum.IsDefined(Category))
+            yield return new ValidationResult("Selecciona una categoría válida.", [nameof(Category)]);
+        if (Items.Count == 0)
+            yield return new ValidationResult("La plantilla debe conservar al menos un elemento.", [nameof(Items)]);
+        if (Items.Any(x => string.IsNullOrWhiteSpace(x.Title) || x.Title.Length > 200 || x.EstimatedHours <= 0 || x.EstimatedHours > 1000000))
+            yield return new ValidationResult("Cada elemento necesita un título de hasta 200 caracteres y horas mayores a cero.", [nameof(Items)]);
     }
+}
+
+public sealed class TemplateItemEditInput
+{
+    public int? Id { get; set; }
+    public string Title { get; set; } = "";
+    public decimal EstimatedHours { get; set; } = 1;
 }
 
 public sealed class ManualTimeInput : IValidatableObject

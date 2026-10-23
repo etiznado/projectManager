@@ -1,6 +1,6 @@
 # Project brief
 
-Última actualización: 2026-10-22 (America/Denver). Alineado con el modelo vigente de esfuerzo y plan semanal (`Project_Manager_Notas_Diseno.md`).
+Última actualización: 2026-10-23 (America/Denver). Alineado con el modelo vigente de esfuerzo y plan semanal (`Project_Manager_Notas_Diseno.md`).
 
 ## Identidad
 
@@ -16,15 +16,15 @@ Herramienta de project management de alto nivel para mostrar en una TV de 32 pul
 ## Alcance acordado (modelo vigente)
 
 - Iniciativa -> proyecto -> actividad. Un proyecto puede ser independiente (sin iniciativa) y una actividad puede ser suelta (sin proyecto).
-- Crear una actividad no exige fechas de inicio/fin: se registra su esfuerzo estimado y sus dependencias antes de programarla. Proyectos e iniciativas tienen fecha meta cuando corresponda.
+- Crear una actividad no exige fechas de inicio/fin: se registra su esfuerzo estimado antes de programarla. Se aplazó el uso de dependencias al crear. Proyectos e iniciativas tienen fecha meta cuando corresponda.
 - El empleado reparte una bolsa semanal de horas de referencia entre actividades en Mi semana (plan semanal con bloques).
 - Registro de tiempo real (sesiones y captura manual), terminación explícita y alertas de riesgo por carga compartida.
 - Pantalla de iniciativas/proyectos para TV con actualización automática; administración desde computadora.
 - Desarrollo local primero. Hosting fuera del alcance actual por decisión del usuario.
 
-## Último acuerdo
+## Acuerdos vigentes sobre capacidad
 
-Jornada de referencia confirmada de 45 h semanales: 8 h de lunes a viernes, 5 h el sábado y 0 el domingo; configurable por persona.
+Jornada inicial confirmada de 45 h semanales: 8 h de lunes a viernes, 5 h el sábado y 0 el domingo. Administración permite editar bolsa semanal y horas diarias por persona de forma independiente; cambiar la bolsa deja intacta la jornada.
 
 ## Modelo anterior descartado
 

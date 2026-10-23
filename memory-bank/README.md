@@ -1,6 +1,6 @@
 # Memory bank · RaceIT.ProjectManager
 
-Última actualización: 2026-10-22 (America/Denver).
+Última actualización: 2026-10-23 (America/Denver).
 
 Contexto persistente del proyecto. Describe acuerdos y estado comprobado; no sustituye al código ni convierte propuestas en requisitos aprobados.
 
@@ -20,6 +20,8 @@ Actualizar los archivos afectados al completar un cambio relevante o cuando el u
 Redefinición vigente: se descartó el modelo anterior (fechas/Gantt, milestones, bloqueos, TV por iniciativa) y se reconstruye según `Project_Manager_Notas_Diseno.md` (esfuerzo, plan semanal, registro de tiempo y alertas de riesgo).
 
 Estado real en `activeContext.md` y `progress.md`: implementadas las Etapas 1–7 (confirmadas por el usuario), con login provisional. Arrastrar y soltar implementado posteriormente; ver pendientes y límites de verificación en activeContext.md y progress.md. Los documentos `projectbrief.md`, `productContext.md` y `users-and-work-planning.md` se corrigieron (2026-10-22) para reflejar el modelo vigente de esfuerzo y plan semanal; ya no describen el modelo descartado. El detalle de la actividad se abre en modal (con registro de tiempo y edición de horas del bloque) y las barras del timeline indican el estado de trabajo (brillo = contador activo, amarillo pálido = iniciada y pausada).
+
+Cambios posteriores de este chat (2026-10-22–23): Usuario puede crear proyectos independientes y actividades propias; Mi semana restringe la actividad nueva a proyectos del responsable actual. Administración organiza Personas, Iniciativas, Proyectos, Actividades y Plantillas en secciones, cada una con un formulario compartido de creación/edición arriba y lista abajo. Eliminar plantillas pide confirmación. La bolsa semanal y la jornada diaria se editan de forma independiente en Personas; cambiar la bolsa conserva las horas por día. Las fechas meta editables de iniciativas y proyectos usan `InputDate` con icono de calendario del navegador. Ver `activeContext.md` y `progress.md` para alcance exacto y verificación.
 
 Mensaje sugerido para un chat nuevo desde la carpeta del repositorio:
 

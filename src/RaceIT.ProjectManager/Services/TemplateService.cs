@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using RaceIT.ProjectManager.Data;
 using RaceIT.ProjectManager.Domain;
@@ -17,12 +18,10 @@ public sealed class TemplateService(IDbContextFactory<ProjectManagerDbContext> f
             .ToListAsync();
     }
 
-    public async Task<Template> CreateAsync(TemplateInput input)
+    public async Task<Template> CreateAsync(TemplateEditorInput input)
     {
         await access.RequireAdminAsync();
-        if (string.IsNullOrWhiteSpace(input.Name)) throw new ArgumentException("Captura el nombre.");
-        if (input.Items.Count == 0 || input.Items.Any(x => string.IsNullOrWhiteSpace(x.Title) || x.EstimatedHours <= 0))
-            throw new ArgumentException("La plantilla requiere al menos un elemento válido.");
+        ValidateEditor(input);
         await using var db = await factory.CreateDbContextAsync();
         var template = new Template { Name = input.Name.Trim(), Category = input.Category };
         var order = 1;
@@ -31,6 +30,48 @@ public sealed class TemplateService(IDbContextFactory<ProjectManagerDbContext> f
         db.Templates.Add(template);
         await db.SaveChangesAsync();
         return template;
+    }
+
+    public async Task<Template> UpdateAsync(int templateId, TemplateEditorInput input)
+    {
+        await access.RequireAdminAsync();
+        ValidateEditor(input);
+
+        await using var db = await factory.CreateDbContextAsync();
+        var template = await db.Templates.Include(x => x.Items).SingleOrDefaultAsync(x => x.Id == templateId)
+            ?? throw new ArgumentException("La plantilla no existe.");
+        template.Name = input.Name.Trim();
+        template.Category = input.Category;
+        var existing = template.Items.ToDictionary(x => x.Id);
+        var retainedIds = input.Items.Where(x => x.Id is not null).Select(x => x.Id!.Value).ToList();
+        if (retainedIds.Count != retainedIds.Distinct().Count() || retainedIds.Any(id => !existing.ContainsKey(id)))
+            throw new ArgumentException("La selección de elementos no corresponde a esta plantilla.");
+
+        db.TemplateItems.RemoveRange(template.Items.Where(x => !retainedIds.Contains(x.Id)).ToList());
+        var added = new List<(TemplateItemEditInput Input, TemplateItem Entity)>();
+        for (var i = 0; i < input.Items.Count; i++)
+        {
+            var source = input.Items[i];
+            var item = source.Id is int id ? existing[id] : new TemplateItem { TemplateId = templateId };
+            item.Title = source.Title.Trim();
+            item.EstimatedHours = source.EstimatedHours;
+            item.Order = i + 1;
+            if (source.Id is null)
+            {
+                db.TemplateItems.Add(item);
+                added.Add((source, item));
+            }
+        }
+        await db.SaveChangesAsync();
+        foreach (var (source, item) in added) source.Id = item.Id;
+        return template;
+    }
+
+    private static void ValidateEditor(TemplateEditorInput input)
+    {
+        var errors = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(input, new ValidationContext(input), errors, true))
+            throw new ArgumentException(string.Join(" ", errors.Select(x => x.ErrorMessage)));
     }
 
     public async Task DeleteAsync(int id)

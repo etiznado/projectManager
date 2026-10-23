@@ -1,0 +1,57 @@
+@inject ProjectService Projects
+
+@if (error is not null) { <p role="alert">@error</p> }
+<EditForm Model="input" OnValidSubmit="SaveAsync" FormName="initiative">
+    <DataAnnotationsValidator /><ValidationSummary />
+    <label>Nombre<InputText @bind-Value="input.Name" /></label>
+    <label>Descripción<InputTextArea @bind-Value="input.Description" /></label>
+    <label>Fecha meta (opcional)<InputDate @bind-Value="input.TargetDate" class="calendar-date" /></label>
+    <div class="form-actions">
+        <button type="submit" disabled="@saving">@(ExistingInitiative is null ? "Crear iniciativa" : "Guardar cambios")</button>
+        @if (ExistingInitiative is not null)
+        {
+            <button type="button" class="secondary" disabled="@saving" @onclick="() => OnCancel.InvokeAsync()">Cancelar edición</button>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Initiative? ExistingInitiative { get; set; }
+    [Parameter] public EventCallback<Initiative> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private InitiativeInput input = new();
+    private int? initializedId;
+    private bool saving;
+    private string? error;
+
+    protected override void OnParametersSet()
+    {
+        if (initializedId == ExistingInitiative?.Id) return;
+        initializedId = ExistingInitiative?.Id;
+        input = ExistingInitiative is null ? new() : new InitiativeInput
+        {
+            Name = ExistingInitiative.Name,
+            Description = ExistingInitiative.Description,
+            TargetDate = ExistingInitiative.TargetDate
+        };
+        error = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving) return;
+        saving = true;
+        error = null;
+        try
+        {
+            var saved = ExistingInitiative is null
+                ? await Projects.CreateInitiativeAsync(input)
+                : await Projects.UpdateInitiativeAsync(ExistingInitiative.Id, input);
+            input = new();
+            await OnSaved.InvokeAsync(saved);
+        }
+        catch (Exception ex) { error = ex.Message; }
+        finally { saving = false; }
+    }
+}

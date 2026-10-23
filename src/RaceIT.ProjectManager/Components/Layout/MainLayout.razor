@@ -6,6 +6,10 @@
             <span class="brand">RaceIT · Project Manager</span>
             <nav>
                 <a href="/mi-semana">Mi semana</a>
+                @if (session.User.IsInRole("Usuario"))
+                {
+                    <a href="/mis-proyectos">Mis proyectos</a>
+                }
                 <a href="/initiatives">Initiatives</a>
                 @if (session.User.IsInRole("Administrador"))
                 {
