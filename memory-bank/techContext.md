@@ -31,12 +31,12 @@ VS Code: F5 con RaceIT.ProjectManager (Blazor). HTTP http://localhost:5208. Si e
 
 ## Pruebas
 
-- 53 pruebas xUnit en `tests/RaceIT.ProjectManager.Tests` (incluyen reglas de planeación, permisos, diseño semanal, riesgo, plantillas, horas de bloque y validación de jornada diaria), sin requerir SQL Server.
+- 69 pruebas xUnit en `tests/RaceIT.ProjectManager.Tests` (incluyen reglas de planeación, permisos, diseño semanal con carriles uniformes, agrupación del pool, riesgo, plantillas, horas de bloque y validación de jornada diaria), sin requerir SQL Server.
 - `dotnet test RaceIT.ProjectManager.sln` no depende de la base.
 
 ## Verificación visual
 
-No se dispone de navegador automatizable. No presentar compilación/HTTP como prueba visual de interacción.
+No se dispone de navegador automatizable. No presentar compilación/HTTP como prueba visual de interacción. `app.css` se enlaza con `@Assets["app.css"]` en `App.razor`; en Development el nombre no lleva huella de contenido, así que tras editar CSS conviene pedir una recarga forzada (Ctrl+F5) antes de juzgar un cambio visual, para no confundirlo con una hoja de estilos en caché.
 
 ### Jornada confirmada de 45 h (2026-10-20)
 

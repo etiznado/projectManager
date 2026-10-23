@@ -38,7 +38,7 @@ Login provisional por selección de persona (sin contraseña) con cookie de sesi
 ## Pantallas
 
 - `/login`: selección de usuario (acceso provisional).
-- `/mi-semana`: navegación semanal, métricas (Disponibles, Planeadas, Sin asignar, Completadas), pool colapsable con arrastre al timeline, timeline con barras proporcionales (relleno verde de consumo y borde por estado de trabajo) y detalle de la actividad en modal con registro de tiempo y edición de horas del bloque.
+- `/mi-semana`: navegación semanal, métricas (Disponibles, Planeadas, Sin asignar, Completadas), pool agrupado por proyecto (grupos colapsables, expandidos por defecto y «Sin proyecto» al inicio) con arrastre al timeline, timeline con carriles uniformes por día laborable (los días sin horas no ocupan espacio) y barras por tramos (relleno verde de consumo y borde por estado de trabajo), con marca «fuera de jornada» si el plan excede la jornada sumada y detalle de la actividad en modal con registro de tiempo y edición de horas del bloque.
 - `/mis-proyectos`: Usuario consulta sus proyectos, crea proyectos independientes (sin iniciativa) y edita nombre/fecha meta de los asignados.
 - `/initiatives`: vista de solo lectura de iniciativas y proyectos con métricas, banner de riesgo, auto-refresco y pantalla completa.
 - `/administracion`: personas, iniciativas, proyectos, actividades y plantillas (solo Administrador), organizadas por secciones; se muestra una categoría a la vez.

@@ -63,10 +63,12 @@ La forma de planear es independiente del rol y usa los mismos proyectos, activid
 - Se colapsa a la izquierda dejando una pestaña pequeña con icono para restaurarlo a su tamaño original.
 - Sin texto en la pestaña y sin botón flotante adicional.
 - Los iconos de las pestañas no se repiten como iconos decorativos en las tarjetas.
+- Acuerdo posterior (2026-10-23): las actividades del pool se agrupan por proyecto en un encabezado colapsable, expandido por defecto, con «Sin proyecto» al inicio y el resto en orden alfabético.
 
 ### Timeline y orden
 
 - Días y horas de jornada, barras proporcionales a horas planeadas y línea de ahora.
+- Acuerdo posterior (2026-10-23): el timeline reparte el ancho en carriles de igual tamaño entre los días con horas; los días sin horas no ocupan espacio y el trabajo que excede la jornada sumada se marca «fuera de jornada».
 - Vacío muestra la cuadrícula sin barras.
 - **Última decisión: reordenamiento vertical solamente.** Reemplaza la idea previa de arrastrar horizontalmente a cualquier día.
 - El sistema acomoda los bloques consecutivamente desde el inicio de la semana laboral, según su orden, duración y jornada. El segundo comienza cuando termina el primero.

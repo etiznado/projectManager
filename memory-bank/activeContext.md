@@ -2,6 +2,16 @@
 
 Actualizado: 2026-10-23 (America/Denver).
 
+## Pool agrupado por proyecto (2026-10-23)
+
+El pool de Mi semana agrupa las actividades por proyecto con encabezado colapsable (expandido por defecto; el colapso vive en memoria del componente). Regla pura `PoolGrouping.Group`: «Sin proyecto» al inicio y el resto alfabético, conservando el orden de creación dentro de cada grupo. Por decisión del usuario el encabezado muestra solo el nombre, sin iniciativa y sin encabezados fijos. Verificado: build 0 errores/0 advertencias y 69/69 pruebas xUnit; revisión visual pendiente. Detalle en `progress.md`.
+
+
+## Carriles uniformes en Mi semana (2026-10-23)
+
+Decisión del usuario: en `/mi-semana` cada día con jornada ocupa el **mismo ancho** y los días de 0 h no ocupan espacio; el trabajo que excede la jornada sumada se recorta en el borde con la marca «fuera de jornada». Implementado en `WeekLayoutCalculator` (`WorkingDays`, `TrackPercent`, `SplitIntoDays`, `SegmentFillFraction`), en `MyWeek.razor` (encabezado, cuadrículas y una barra por tramo) y en `app.css` (tramos continuos, chip de desborde). Se retiró `AxisTotal`. Efecto asumido: la escala de horas deja de ser lineal (una hora en un día corto ocupa más ancho que en un día largo). Tras la primera revisión visual del usuario se fijó la altura de la barra (`height: calc(1.2em + .6rem)`), porque los tramos sin etiqueta quedaban más delgados que el primero; tras la segunda, la etiqueta de horas pasó a ser una sola capa centrada sobre el bloque completo (`BlockVm.LeftPercent`/`SpanPercent`), porque dibujarla en el primer tramo la recortaba cuando ese tramo era una astilla. Verificado: build 0 errores/0 advertencias y 63/63 pruebas xUnit; revisión visual pendiente. Detalle en `progress.md`.
+
+
 ## Redefinición del producto (vigente)
 
 Se descartó por completo el enfoque anterior (cronograma por fechas/Gantt, milestones, bloqueos, calendarios por proyecto y TV por iniciativa), junto con su código y base de datos. La fuente de verdad del nuevo diseño es `Project_Manager_Notas_Diseno.md`: modelo de **esfuerzo y plan semanal** con registro de tiempo y alertas de riesgo. Los renders `01/02/03` de memory-bank son la referencia visual.

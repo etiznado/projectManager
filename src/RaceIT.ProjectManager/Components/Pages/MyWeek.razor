@@ -47,15 +47,30 @@
                     <svg class="pool-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 6-6 6 6 6M18 6l-6 6 6 6" /></svg>
                 </button>
             </div>
-            @if (pool.Count == 0) { <p class="muted">Sin actividades abiertas.</p> }
-            @foreach (var row in pool)
+            @if (poolGroups.Count == 0) { <p class="muted">Sin actividades abiertas.</p> }
+            @foreach (var group in poolGroups)
             {
-                <div @key="row.Activity.Id" class="pool-card" draggable="true" @ondragstart="() => BeginDrag(row.Activity.Id, null)" @ondragend="EndDrag">
-                    <div class="pool-card-heading">
-                        <span class="drag-grip" aria-hidden="true">⠿</span>
-                        <div class="link" @onclick="() => SelectAsync(row.Activity.Id)"><strong>@row.Activity.Title</strong></div>
-                    </div>
-                    <div class="muted">@(row.Activity.Project?.Name ?? "Sin proyecto") · @Format(row.Activity.CurrentEstimateHours) · quedan @Format(row.RemainingHours)</div>
+                var collapsed = collapsedProjects.Contains(group.ProjectId);
+                <div class="pool-group-block" @key="GroupKey(group.ProjectId)">
+                    <button class="pool-group" aria-expanded="@(!collapsed)" @onclick="() => ToggleGroup(group.ProjectId)">
+                        <svg class="pool-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                        <span>@group.Name</span>
+                    </button>
+                    @if (!collapsed)
+                    {
+                        <div class="pool-group-items">
+                            @foreach (var row in group.Rows)
+                            {
+                                <div @key="row.Activity.Id" class="pool-card" draggable="true" @ondragstart="() => BeginDrag(row.Activity.Id, null)" @ondragend="EndDrag">
+                                    <div class="pool-card-heading">
+                                        <span class="drag-grip" aria-hidden="true">⠿</span>
+                                        <div class="link" @onclick="() => SelectAsync(row.Activity.Id)"><strong>@row.Activity.Title</strong></div>
+                                    </div>
+                                    <div class="muted">@Format(row.Activity.CurrentEstimateHours) · quedan @Format(row.RemainingHours)</div>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             }
         </section>
@@ -65,45 +80,60 @@
             <div class="week-schedule" style="@ScheduleRows">
                 <div class="schedule-heading" @ondragover:preventDefault @ondrop="() => DropAsync(null)">Actividad</div>
                 <div class="schedule-days">
-                    @foreach (var day in view.Layout.Days)
+                    @foreach (var day in workingDays)
                     {
-                        <div class="schedule-day" style="width:@Pct(day.WorkingHours, axis)%"><strong>@day.Date.ToString("ddd d")</strong><span>@Format(day.WorkingHours)</span></div>
+                        <div class="schedule-day" style="width:@Pct(1, workingDays.Count)%"><strong>@day.Date.ToString("ddd d")</strong><span>@Format(day.WorkingHours)</span></div>
                     }
                 </div>
-                @{ decimal offset = 0m; }
                 @foreach (var block in blocks)
                 {
-                    var start = offset;
+                    var segments = view.Layout.Segments(block.StartOffset, block.Hours);
                     <div @key="block.BlockId" class="schedule-row @(dropBeforeId == block.BlockId ? "drop-before" : "")"
                          @ondragover:preventDefault @ondragenter="() => dropBeforeId = block.BlockId" @ondrop="() => DropAsync(block.BlockId)">
                         <div class="schedule-context">
                             <span class="drag-grip" draggable="true" title="Arrastrar para reordenar" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag">⠿</span>
                             <button class="activity-select" @onclick="() => SelectAsync(block.ActivityId)"><strong>@block.Title</strong><span class="muted">@(block.ProjectName ?? "Sin proyecto")</span></button>
+                            @if (block.OverflowHours > 0) { <span class="badge risk overflow-badge" title="@($"{Format(block.OverflowHours)} fuera de jornada")">⚠ @Format(block.OverflowHours) fuera de jornada</span> }
                             <button class="secondary remove-block" title="Quitar del plan" aria-label="@($"Quitar {block.Title} del plan")" @onclick="() => RemoveAsync(block)">✕</button>
                         </div>
                         <div class="schedule-track">
-                            @foreach (var day in view.Layout.Days)
+                            @for (var i = 1; i < workingDays.Count; i++)
                             {
-                                <div class="schedule-gridline" style="left:@Pct(day.CumulativeStart, axis)%"></div>
+                                <div class="schedule-gridline" style="left:@Pct(i, workingDays.Count)%"></div>
                             }
                             @if (nowPct is not null) { <div class="now-line" style="left:@nowPct%"></div> }
-                            <button class="schedule-bar @BarClass(block)" draggable="true" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag"
-                                    style="left:@Pct(start, axis)%;width:@Pct(block.Hours, axis)%" @onclick="() => SelectAsync(block.ActivityId)" title="@($"{block.Title} · {Format(block.Hours)} planeadas")">
-                                <span class="schedule-progress" style="width:@Pct(block.Progress, 1m)%" aria-hidden="true"></span>
-                                <span class="schedule-hours">@Format(block.Hours)</span>
-                            </button>
+                            @if (segments.Count == 0)
+                            {
+                                <button class="schedule-bar overflow-only @BarClass(block)" draggable="true" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag"
+                                        style="left:100%;width:0" @onclick="() => SelectAsync(block.ActivityId)" title="@($"{block.Title} · {Format(block.Hours)} planeadas · fuera de jornada")"></button>
+                            }
+                            @for (var i = 0; i < segments.Count; i++)
+                            {
+                                var segment = segments[i];
+                                var isFirst = i == 0;
+                                var isLast = i == segments.Count - 1;
+                                <button class="schedule-bar @SegmentClass(isFirst, isLast) @BarClass(block)" draggable="true" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag"
+                                        style="left:@Pct(segment.DayIndex + segment.FromFraction, workingDays.Count)%;width:@Pct(segment.ToFraction - segment.FromFraction, workingDays.Count)%"
+                                        @onclick="() => SelectAsync(block.ActivityId)" title="@($"{block.Title} · {Format(block.Hours)} planeadas")"
+                                        aria-hidden="@(isFirst ? null : "true")" tabindex="@(isFirst ? null : "-1")">
+                                    <span class="schedule-progress" style="width:@Pct(WeekLayoutCalculator.SegmentFillFraction(block.Progress * block.Hours, segment), 1m)%" aria-hidden="true"></span>
+                                </button>
+                            }
+                            @if (block.SpanPercent > 0)
+                            {
+                                <span class="schedule-hours" style="left:@Pct(block.LeftPercent, 100m)%;width:@Pct(block.SpanPercent, 100m)%" aria-hidden="true">@Format(block.Hours)</span>
+                            }
                         </div>
                     </div>
-                    offset += block.Hours;
                 }
                 <div class="schedule-context schedule-drop-tail @(dropBeforeId == -1 ? "drop-active" : "")"
                      @ondragover:preventDefault @ondragenter="() => dropBeforeId = -1" @ondrop="() => DropAsync(null)">
                     @if (blocks.Count == 0) { <span class="muted">Arrastra aquí una actividad.</span> }
                 </div>
                 <div class="schedule-track schedule-tail-track">
-                    @foreach (var day in view.Layout.Days)
+                    @for (var i = 1; i < workingDays.Count; i++)
                     {
-                        <div class="schedule-gridline" style="left:@Pct(day.CumulativeStart, axis)%"></div>
+                        <div class="schedule-gridline" style="left:@Pct(i, workingDays.Count)%"></div>
                     }
                     @if (nowPct is not null) { <div class="now-line" style="left:@nowPct%"></div> }
                 </div>
@@ -237,10 +267,14 @@
 }
 
 @code {
-    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; public ActivityStatus Status; public bool HasOpenSession; }
+    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; public decimal StartOffset; public decimal EndOffset; public decimal LeftPercent; public decimal SpanPercent; public decimal OverflowHours; public ActivityStatus Status; public bool HasOpenSession; }
 
     private List<ActivityService.ActivityRow> pool = [];
+    private IReadOnlyList<ActivityPoolGroup> poolGroups = [];
+    private readonly HashSet<int?> collapsedProjects = [];
+    private IReadOnlyList<WeekDayInfo> workingDays = [];
     private List<BlockVm> blocks = [];
+
     private WeeklyPlanService.WeekView? view;
     private WorkRecordService.ActivityDetail? detail;
     private int? selectedId;
@@ -316,16 +350,15 @@
 
     private string ScheduleRows => "grid-template-rows: max-content " + string.Join(" ", Enumerable.Repeat("max-content", blocks.Count)) + " minmax(44px, 1fr);";
 
-    private decimal axis => view?.Layout.AxisTotal ?? 1m;
 
     private string? nowPct
     {
         get
         {
-            if (view is null) return null;
+            if (view is null || workingDays.Count == 0) return null;
             var today = DateOnly.FromDateTime(DateTime.Today);
             var day = view.Layout.Days.FirstOrDefault(d => d.Date == today);
-            return day is null ? null : Pct(day.CumulativeStart, axis);
+            return day is null ? null : Pct(view.Layout.PositionPercent(day.CumulativeStart), 100m);
         }
     }
 
@@ -346,7 +379,10 @@
         try
         {
             view = await Plan.GetWeekAsync(weekStart);
-            blocks = view.Layout.Blocks.Select(b => new BlockVm { BlockId = b.BlockId, ActivityId = b.ActivityId, Title = b.Title, ProjectName = b.ProjectName, Hours = b.PlannedHours }).ToList();
+            var layout = view.Layout;
+            workingDays = layout.WorkingDays;
+            var trackHours = layout.TrackHours;
+            blocks = layout.Blocks.Select(b => new BlockVm { BlockId = b.BlockId, ActivityId = b.ActivityId, Title = b.Title, ProjectName = b.ProjectName, Hours = b.PlannedHours, StartOffset = b.StartOffset, EndOffset = b.EndOffset, LeftPercent = layout.PositionPercent(b.StartOffset), SpanPercent = layout.PositionPercent(b.EndOffset) - layout.PositionPercent(b.StartOffset), OverflowHours = Math.Max(0m, b.EndOffset - trackHours) }).ToList();
             var personId = await Access.PersonIdAsync();
             var allRows = await Activities.ListRowsAsync(personId);
             var rowsById = allRows.ToDictionary(r => r.Activity.Id);
@@ -362,6 +398,7 @@
             }
             var plannedActivityIds = blocks.Select(b => b.ActivityId).ToHashSet();
             pool = allRows.Where(r => r.Activity.Status != ActivityStatus.Completed && !plannedActivityIds.Contains(r.Activity.Id)).ToList();
+            poolGroups = PoolGrouping.Group(pool);
             registeredTotal = allRows.Sum(r => r.RecordedHours);
             templates = await Templates.ListAsync();
         }
@@ -411,13 +448,21 @@
 
     private void CloseCreateActivity() => showCreateActivity = false;
 
+    private static string GroupKey(int? projectId) => projectId?.ToString() ?? "sin-proyecto";
+
+    private void ToggleGroup(int? projectId)
+    {
+        if (!collapsedProjects.Remove(projectId)) collapsedProjects.Add(projectId);
+    }
+
     private void OnCreateActivityKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Escape") CloseCreateActivity();
     }
 
-    private async Task OnActivityCreatedAsync(Activity _)
+    private async Task OnActivityCreatedAsync(Activity activity)
     {
+        collapsedProjects.Remove(activity.ProjectId);
         CloseCreateActivity();
         await RefreshWeekAsync();
     }
@@ -518,6 +563,7 @@
     private static string Pct(decimal value, decimal total) => total <= 0 ? "0" : (value / total * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
     private static string Num(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
     private static string BarClass(BlockVm block) => block.HasOpenSession ? "running" : block.Status == ActivityStatus.InProgress ? "in-progress" : "";
+    private static string SegmentClass(bool isFirst, bool isLast) => isFirst && isLast ? "segment-only" : isFirst ? "segment-first" : isLast ? "segment-last" : "segment-middle";
 
     private static string Status(ActivityStatus status) => status switch
     {
