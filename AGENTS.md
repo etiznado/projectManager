@@ -23,4 +23,4 @@ dotnet test RaceIT.ProjectManager.sln
 
 ## Feature flow
 
-For a registered feature, use the [feature flow](features/README.md) and its feature file. Invoke the Codex roles per phase; validate QA and UI approval where applicable. Technical approval does not authorize publishing or merging a PR.
+For a registered feature, use the [feature flow](features/README.md) and its feature file. For new features, require tagged Gherkin acceptance scenarios in `requirements.md` before `Ready`. Invoke the Codex roles per phase; validate QA and UI approval where applicable. Technical approval does not authorize publishing or merging a PR.

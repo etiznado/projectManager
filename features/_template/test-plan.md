@@ -7,12 +7,12 @@
 
 ## Validation cases
 
-Keep at most six focused cases by default. Cover relevant positive and negative paths. Add cases only when the feature's risk requires them and record why.
+Keep at most six focused cases by default. Map each case to one or more approved `@AC-NN` scenarios in `requirements.md`; identify any uncovered scenario as BLOCKED. Cover relevant positive and negative paths. Add cases only when the feature's risk requires them and record why.
 
-| ID | Type | Setup and action | Expected result | Actual result and evidence | Status |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Positive |  |  |  | Not run |
-| 2 | Negative |  |  |  | Not run |
+| ID | Scenario tag | Type | Setup and action | Expected result | Actual result and evidence | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `@AC-01` | Positive |  |  |  | Not run |
+| 2 | `@AC-02` | Negative |  |  |  | Not run |
 
 ## Results and limits
 

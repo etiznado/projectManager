@@ -2,28 +2,33 @@
 
 ## Goal
 
-State the user-visible outcome in one or two sentences.
+State the user-visible outcome in one or two sentences. Record only what the owner confirmed.
 
 ## Scope
 
 - Included:
 - Excluded:
 
-## Acceptance criteria
+## Acceptance scenarios
 
-- [ ] Observable result:
-
-## Scenarios
-
-Add a few Gherkin scenarios when they clarify behavior. Include important exceptions; avoid duplicating every criterion.
+Write all observable acceptance criteria here, not as a separate prose checklist. Use one unique `@AC-NN` tag per scenario and concrete `Given`, `When`, and `Then` steps. Include at least one normal path and one relevant rejection or exception path. Add scenarios only when they express distinct behavior. If no rejection or exception path applies, explain that immediately below the code block.
 
 ```gherkin
-Scenario: Example outcome
-  Given a relevant starting state
-  When the user takes an action
-  Then an observable result occurs
+Feature: <user-visible capability>
+
+  @AC-01
+  Scenario: <normal outcome>
+    Given <specific starting state>
+    When <actor takes a meaningful action>
+    Then <observable result>
+
+  @AC-02
+  Scenario: <rejected or exceptional outcome>
+    Given <specific starting state>
+    When <actor attempts an invalid or exceptional action>
+    Then <observable response and unchanged or corrected state>
 ```
 
 ## Open questions and assumptions
 
-- Question or assumption requiring owner confirmation:
+- List unresolved questions and unapproved assumptions here. Do not present them as accepted scenarios.
