@@ -1,4 +1,6 @@
-# FEAT-NNN design
+## Design — issue #NNN — revision 1
+
+Content guide for a **design issue comment**, not a feature file. Link the approved requirements comment permalink and exact revision.
 
 ## Requirements revision
 

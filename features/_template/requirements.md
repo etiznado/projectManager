@@ -1,4 +1,6 @@
-# FEAT-NNN requirements
+## Requirements — issue #NNN — revision 1
+
+Content guide for a **requirements issue comment**. Replace #NNN with the supplied issue number; do not create a feature file. Include the comment revision and links to the owner's request.
 
 ## Goal
 

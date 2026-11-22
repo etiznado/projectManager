@@ -1,11 +1,9 @@
----
-id: "FEAT-NNN"
-title: ""
-status: "Draft"
-ui_review: "none"
----
+## Feature record — issue #NNN — revision 1
 
-# Feature title
+- Issue: <issue URL>
+- Title:
+- Status: Draft
+- UI review: none / required
 
 ## Decisions and handoffs
 
@@ -25,4 +23,4 @@ ui_review: "none"
 - Verified:
 - Pending or blocked:
 
-Use [requirements.md](requirements.md) for approved scope, [design.md](design.md) for technical design, and [test-plan.md](test-plan.md) for QA evidence. Follow [the workflow](../README.md); completing a field does not change state automatically.
+This is a content guide for the coordinator's **feature record issue comment**, not a file to copy into a new feature directory. Link the exact requirements, design, Developer, Reviewer, and QA comment revisions and the owner's decisions. Follow [the workflow](../README.md); completing a field does not change state automatically.

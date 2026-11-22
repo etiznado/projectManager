@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22 (America/Denver).
 
+## GitHub issue as new feature record (2026-11-22)
+
+Owner changed the feature workflow: direct Codex requests must supply a GitHub issue number/URL; Jarvis supplies it in its launch. For new feature work, the issue is the canonical record. The coordinator posts state/decision/handoff references, while Analyst, Architect, Developer, Reviewer, and QA post their complete outputs as distinct issue comments. Comment permalinks and exact code revisions drive gates; approved requirements are versioned with a new comment and reapproved when changed. New `features/FEAT-NNN/` directories and implementation logs are no longer created. Existing FEAT files and the `_template` files remain historical evidence and content guides. Repository instructions and the five role definitions were updated; no issue was supplied in this task, so no comment was posted and no end-to-end comment handoff was exercised. See [feature workflow](../features/README.md).
+
 ## Jarvis-to-Codex feature handoff clarification (2026-11-22)
 
 The failed Jarvis launch ran in a surface without the configured Codex role types or a Git work tree; its report correctly stopped before implementation. The repository role files are tracked, and this local Codex runtime exposes all five `pm_*` agent types. `git rev-parse --show-toplevel` resolves to this repository; `git status` works. The workflow now directs Jarvis to start a Codex task in this repository and lets that task invoke each real `agent_type` after a work-tree and role preflight. This changes coordination instructions only; it does not configure Jarvis itself or start a feature. Local build passed with 0 warnings/errors and 69/69 tests passed. See [feature workflow](../features/README.md#jarvis-activation).

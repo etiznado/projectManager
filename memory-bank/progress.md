@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22.
 
+## Issue-comment feature workflow (2026-11-22)
+
+Updated `AGENTS.md`, `features/README.md`, the four `features/_template` content guides, and all five `.codex/agents/pm_*.toml` definitions. New feature artifacts and role handoffs go to the supplied GitHub issue as full Markdown comments, with permalink/read-back verification, exact revision references, and append-only new versions after approvals or gate-affecting changes. Existing FEAT records were retained. Build passed with 0 warnings/errors and tests passed 70/70. No issue was provided, so no GitHub comment was posted and the flow has not been tested end to end.
+
 ## Jarvis role handoff clarification (2026-11-22)
 
 Updated `AGENTS.md` and `features/README.md` to route Jarvis feature requests through a Codex task that can load the project `pm_*` agent types, with a work-tree and role preflight before claiming a phase. The failed Jarvis surface had neither a usable Git work tree nor role invocation; no feature implementation was attempted there. This local work tree and role availability were confirmed. Verification: `dotnet build RaceIT.ProjectManager.sln` passed with 0 warnings/errors; `dotnet test RaceIT.ProjectManager.sln` passed 69/69. Jarvis launch and end-to-end phase handoff remain untested; no Jarvis configuration or trigger was changed.

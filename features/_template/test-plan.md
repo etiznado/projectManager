@@ -1,4 +1,6 @@
-# FEAT-NNN test plan
+## Test plan and results — issue #NNN — revision 1
+
+Content guide for a **QA issue comment**, not a feature file. Link the approved requirements comment and final reviewed code revision.
 
 ## Revision under test
 
@@ -7,7 +9,7 @@
 
 ## Validation cases
 
-Keep at most six focused cases by default. Map each case to one or more approved `@AC-NN` scenarios in `requirements.md`; identify any uncovered scenario as BLOCKED. Cover relevant positive and negative paths. Add cases only when the feature's risk requires them and record why.
+Keep at most six focused cases by default. Map each case to one or more approved `@AC-NN` scenarios in the requirements comment; identify any uncovered scenario as BLOCKED. Cover relevant positive and negative paths. Add cases only when the feature's risk requires them and record why.
 
 | ID | Scenario tag | Type | Setup and action | Expected result | Actual result and evidence | Status |
 | --- | --- | --- | --- | --- | --- | --- |
