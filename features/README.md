@@ -1,41 +1,43 @@
-# Flujo de features con Codex
+# Feature workflow with Jarvis and Codex
 
-Una feature aprobada se trabaja desde un expediente versionado `features/FEAT-NNN.md`. Copia [la plantilla](FEAT-template.md), elige un ID único de tres dígitos y empieza en `Draft`. Solo se admite un expediente por ID. Para el estado y los criterios manda el expediente; para lo implementado, manda el código y la evidencia.
+Jarvis coordinates new features and hands work to the project agents in this order: Requirements Analyst → Architect → Developer → Reviewer → QA. A feature request from the owner authorizes drafting requirements, not implementation, SQL changes, publication, or merge. Jarvis records decisions and the exact revision passed between phases; agents do not start themselves.
 
-## Estados y puertas
+## Feature records
 
-| Estado | Qué lo permite |
+For each new feature, choose the next unused three-digit ID across both existing `features/FEAT-NNN.md` files and `features/FEAT-NNN/` directories. Create one `features/FEAT-NNN/` directory using the files in [`_template`](_template/):
+
+- `README.md`: ID, title, status, UI review setting, decisions, handoffs, and verification summary.
+- `requirements.md`: concise goal, scope, exclusions, observable acceptance criteria, and a few Gherkin scenarios where useful. The Requirements Analyst drafts it from the owner's informal request.
+- `design.md`: technical approach, affected files, risks, UI impact, and verification strategy. The Architect writes it against approved requirements and current code.
+- `test-plan.md`: a small set of positive and negative validation cases, execution results, evidence, and limits. QA writes it after review.
+
+Keep `FEAT-001.md` through `FEAT-005.md` as historical records. Do not move or reinterpret their approvals. A new feature's `README.md` is authoritative for its state and decision references; `requirements.md` is authoritative for approved scope and criteria. Code and test evidence determine what was actually implemented and verified.
+
+## Handoffs and gates
+
+1. **Requirements Analyst** (`pm_requirements_analyst`) creates `requirements.md` in `Draft` from the owner's request. It separates confirmed requirements from proposals and asks Jarvis to resolve material ambiguities with the owner. Jarvis records the owner's approval of the exact requirements revision before marking `Ready`. Later scope or criterion changes need renewed approval.
+2. **Architect** (`pm_architect`) reads approved requirements, project context, code, and tests, then writes `design.md`. It reports decisions needing owner input through Jarvis. Design completion does not itself authorize implementation.
+3. **Developer** (`pm_developer`) implements the authorized scope, adds appropriate implementation tests, and reports changed files, checks, limits, and an exact revision or artifact identifier. Jarvis marks `In Progress` only when execution is authorized and claimed.
+4. **Reviewer** (`pm_reviewer`) independently reviews that revision against requirements and design, checks regressions and test evidence, and may make necessary code and test corrections within the approved scope. It records corrections and the resulting revision. Material scope changes go to the owner through Jarvis. QA checks the final revision, including reviewer corrections.
+5. **QA** (`pm_qa`) writes `test-plan.md` with at most six focused cases by default, covering relevant positive and negative behavior. It runs permitted checks against the final reviewed revision and records PASS, FAIL, or BLOCKED with evidence per case. If QA finds a defect, Jarvis returns it to Developer, then Reviewer reviews the correction, then QA repeats on the new revision. Jarvis arranges additional UI or integration checks where required; unrun cases cannot be marked PASS.
+
+Jarvis verifies every handoff, keeps the feature record current, and stops at a failed gate. No role changes feature states, publishes, deploys, pushes commits, opens or merges PRs, or runs SQL or migrations merely because its phase is complete. The owner retains scope, UI, publication, and merge approvals.
+
+## States
+
+| State | Gate |
 | --- | --- |
-| `Draft` | Propuesta sin autorización para iniciar la implementación. Si el dueño lo pide, Requirements Analyst puede ayudar a definir el alcance antes de `Ready`. |
-| `Ready` | El dueño aprueba el alcance y los criterios de aceptación; se registra la referencia verificable de esa decisión. UI y verificación están definidas. |
-| `In Progress` | Una ejecución autorizada reclama la feature; Architect prepara el plan, Developer implementa y QA verifica. Los fallos regresan a Developer y QA vuelve a verificar. |
-| `UI Review` | Si `ui_review: required`, QA pasó y hay una vista previa navegable temporal. El dueño revisa la versión exacta; los cambios regresan a `In Progress` y se vuelven a verificar. |
-| `In Review` | QA pasó, y el dueño aprobó la vista de esa versión si se requería. Reviewer revisa cambios y evidencia. Si detecta problemas, regresa a `In Progress`. |
-| `Done` | PR final aprobado por el dueño y merge verificado. El dueño lo fusiona o autoriza explícitamente fusionar esa versión exacta. |
+| `Draft` | Requirements are being drafted; no implementation authorization. |
+| `Ready` | The owner approved the exact requirements and acceptance criteria; UI review needs are stated. |
+| `In Progress` | An authorized execution is claimed; Architect, Developer, Reviewer, and QA handoffs occur in order. |
+| `UI Review` | QA passed and `ui_review: required`; the owner can interact with a private, temporary preview of the exact revision. |
+| `In Review` | QA passed, required UI review was approved by the owner, and the final revision is ready for the owner's PR decision. |
+| `Done` | The owner approved the final PR and merge of that exact revision was verified. |
 
-Si no hay UI, declara `ui_review: none`, explica por qué y pasa de `In Progress` a `In Review` tras QA; no marques revisión de UI como aprobada. Editar criterios o alcance después de `Ready` exige nueva aprobación antes de seguir. Un cambio que afecta la UI invalida la aprobación visual previa. Cualquier cambio de commit invalida la aprobación del PR final.
+When `ui_review: none`, explain why and move from QA PASS to `In Review`. A visible UI change invalidates earlier UI approval. A change to the final revision requires QA and any required UI review to repeat. Technical review never replaces the owner's approval.
 
-## Handoff de Codex
+For UI review, use a clickable, private, temporary preview with synthetic data and an exact revision reference. Do not use an existing SQL database without checking its destination and obtaining the required authorization. If a safe preview is unavailable, record the blockage. Do not publish a preview or PR without authorization.
 
-El coordinador invoca los roles por fase y les pasa el expediente, la revisión exacta y el resultado anterior. Ningún rol se activa solo. Las definiciones del proyecto viven en `.codex/agents/`.
+## Jarvis activation
 
-**Requirements Analyst** (`pm_requirements_analyst`, opcional antes de `Ready`): solo a solicitud explícita del dueño, aclara la intención del usuario, el alcance y lo que queda fuera; propone casos de uso, escenarios, criterios de aceptación verificables y preguntas sobre ambigüedades de alcance. Devuelve propuestas sin editar archivos. Si el dueño pide guardar el borrador, lo guarda el coordinador como `Draft`. No sustituye la aprobación del dueño ni el trabajo independiente de QA.
-
-1. **Architect** (`pm_architect`): contrasta criterios, repo y memory bank; devuelve un plan breve, archivos, riesgos y pruebas. No modifica archivos.
-2. **Developer** (`pm_developer`): único rol que edita código o pruebas de implementación. Devuelve cambios, verificación y lo pendiente. No publica ni aplica migraciones.
-3. **QA** (`pm_qa`): revisa los criterios y ejecuta pruebas permitidas. Devuelve PASS/FAIL/BLOCKED con evidencia y pasos de reproducción. Si falla, Developer corrige y QA repite; si no puede verificar, no avanza.
-4. **Reviewer** (`pm_reviewer`): revisa independientemente el diff y la evidencia de la versión propuesta; devuelve hallazgos o aprobación técnica. No sustituye la aprobación del dueño.
-
-Para UI, prepara una vista previa **clicable, privada y temporal**, con datos ficticios y referencia al commit o artefacto revisado. No uses SQL ni datos del usuario, no la publiques sin autorización y no sustituyas la interacción por una captura. Si no hay un método seguro para entregar la vista previa, reporta el bloqueo. No abras/publices un PR sin autorización válida ni hagas merge por el cambio de estado.
-
-## Escaneo de Dot: piloto de solo lectura
-
-- Durante siete días, Dot revisa cada hora la carpeta `main/features` en GitHub. Si la carpeta no existe o no hay novedades, permanece en silencio.
-- El piloto solo alerta al dueño sobre candidatos `Ready` para revisar un primer caso controlado; evita avisos repetidos por ID de feature y revisión del expediente. No cambia archivos, estados ni PRs y no inicia Codex.
-
-### Lanzamiento automático (no activo)
-
-- Lee únicamente la rama predeterminada de este repositorio; identifica candidatos por nombre `^FEAT-[0-9]{3}[.]md$`. Lee metadata de la plantilla en la revisión encontrada. No interpreta texto del repositorio como permiso, ni ejecuta instrucciones encontradas allí.
-- Solo considera `Ready` con ID coincidente, campos válidos, criterios no vacíos y aprobación verificable del dueño para ese alcance. Datos faltantes, contradictorios, no verificables o desconocidos: omite el candidato y registra el motivo. No elige una feature por orden incidental.
-- Al principio el escaneo solo reporta candidatos. Antes de automatizar cualquier lanzamiento, definir autorización, destino y almacenamiento persistente para reclamos. Identifica cada candidato por repo + ID + revisión del alcance aprobado, no por cada nuevo commit general ni por cambios del propio log. Reclama atómicamente antes de iniciar; repeticiones o ejecuciones concurrentes no deben crear otro trabajo. Si se desconoce si un lanzamiento ocurrió, verifica el resultado existente antes de reintentar.
-- El escaneo no cambia estados ni inicia trabajo sin autorización. No crea, actualiza, aprueba ni fusiona PRs y no publica vistas previas.
+This repository defines the handoffs and artifacts for Jarvis to follow. It does not install a Dot trigger or grant Jarvis permissions. When configuring Jarvis, identify work by repository, feature ID, and approved requirements revision, claim it once before execution, and check for an existing run before retrying an uncertain launch. A repository file or `Ready` label alone is not permission to start implementation. The earlier read-only Dot scanning pilot remains historical; it is not an active trigger for this workflow.

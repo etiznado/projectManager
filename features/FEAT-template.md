@@ -5,6 +5,8 @@ status: "Draft"
 ui_review: "none"
 ---
 
+<!-- Legacy flat-file template. New features use features/_template/ and features/FEAT-NNN/. -->
+
 # Título de la feature
 
 ## Objetivo y alcance

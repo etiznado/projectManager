@@ -1,26 +1,26 @@
-# Instrucciones para Codex: RaceIT.ProjectManager
+# Instructions for Codex: RaceIT.ProjectManager
 
-## Antes de cambiar algo
+## Before changing anything
 
-- Empieza por [memory-bank/README.md](memory-bank/README.md). Lee el diseño vigente, el contexto activo y el progreso; consulta los patrones y el contexto técnico según la tarea.
-- Contrasta la documentación con el código, las pruebas y, si corresponde, las migraciones. Distingue lo implementado, lo probado y lo pendiente. No inicies trabajo pendiente sin que el usuario lo pida.
-- Mantén las convenciones del repositorio: namespace `RaceIT.ProjectManager`; .NET 10, Blazor Interactive Server, EF Core y SQL Server.
-- Conserva el plan original y no edites las horas planeadas originales de las actividades. Distingue horas laborables, esperas de 24 horas y fechas manuales; no confundas plan con pronóstico. Edita actividades en modal, conserva el contexto seleccionado y refresca la lista al cerrar.
+- Start with [memory-bank/README.md](memory-bank/README.md). Read the current design, the active context, and the progress notes; consult the patterns and the technical context as the task requires.
+- Cross-check the documentation against the code, the tests, and, where applicable, the migrations. Distinguish what is implemented, what is tested, and what is pending. Do not start pending work unless the user asks for it.
+- Keep the repository conventions: namespace `RaceIT.ProjectManager`; .NET 10, Blazor Interactive Server, EF Core, and SQL Server.
+- Preserve the original plan and do not edit the activities' original planned hours. Distinguish working hours, 24-hour waits, and manual dates; do not confuse plan with forecast. Edit activities in a modal, keep the selected context, and refresh the list when it closes.
 
-## Verificación y límites
+## Verification and limits
 
-Desde la raíz, con el SDK .NET 10:
+From the root, with the .NET 10 SDK:
 
 ```text
 dotnet build RaceIT.ProjectManager.sln
 dotnet test RaceIT.ProjectManager.sln
 ```
 
-- Las pruebas de la solución no requieren SQL Server. En Codex Cloud usa build y pruebas sin asumir que existe la instancia local de Windows.
-- La app y la integración SQL local usan SQL Server Express en Windows. No inicies la app contra una base existente sin comprobar el destino: en Development puede sembrar datos.
-- No crees ni apliques migraciones, ni borres, recrees o cambies bases o datos, sin autorización explícita. Los pasos SQL en el contexto técnico son para ejecución manual.
-- Al terminar un cambio material, actualiza solo las notas afectadas (normalmente `activeContext.md` y `progress.md`), preserva el historial y reporta qué verificaste. No guardes credenciales ni reemplaces datos del usuario por datos de ejemplo.
+- The solution's tests do not require SQL Server. In Codex Cloud, use build and tests without assuming the local Windows instance exists.
+- The app and the local SQL integration use SQL Server Express on Windows. Do not start the app against an existing database without checking the target: in Development it may seed data.
+- Do not create or apply migrations, or delete, recreate, or change databases or data, without explicit authorization. The SQL steps in the technical context are for manual execution.
+- When a material change is finished, update only the affected notes (usually `activeContext.md` and `progress.md`), preserve the history, and report what you verified. Do not store credentials or replace the user's data with sample data.
 
-## Flujo de features
+## Feature flow
 
-Para una feature registrada, usa el [flujo de features](features/README.md) y su expediente. Invoca los roles de Codex por fase; valida QA y la aprobación de la UI si aplica. La aprobación técnica no autoriza publicar ni fusionar un PR.
+For a registered feature, use the [feature flow](features/README.md) and its feature file. Invoke the Codex roles per phase; validate QA and UI approval where applicable. Technical approval does not authorize publishing or merging a PR.

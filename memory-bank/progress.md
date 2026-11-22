@@ -1,6 +1,10 @@
 # Progress
 
-Actualizado: 2026-10-23.
+Actualizado: 2026-11-22.
+
+## Feature workflow documentation (2026-11-22)
+
+Defined the new feature directory and four file templates, the Jarvis handoff order, role write boundaries, owner approval gates, and QA's focused positive/negative test plan. Updated the five `.codex/agents` definitions so Analyst writes requirements, Architect writes design, Reviewer can make scoped code/test corrections, and QA writes and executes the test plan after review. The existing FEAT-001 through FEAT-005 files were not migrated. No Dot automation was configured by this repository change. See [the workflow](../features/README.md).
 
 ## Pool agrupado por proyecto (2026-10-23)
 
