@@ -1,6 +1,10 @@
 # Active context
 
-Actualizado: 2026-10-23 (America/Denver).
+Actualizado: 2026-11-22 (America/Denver).
+
+## Feature workflow for future requests (2026-11-22)
+
+The owner defined a new Jarvis-coordinated order for future features: Requirements Analyst → Architect → Developer → Reviewer → QA. New features use `features/FEAT-NNN/` with `README.md`, `requirements.md`, `design.md`, and `test-plan.md`. The analyst drafts concise requirements from the owner's informal request; the architect writes the design against approved requirements; the reviewer may correct implementation code before QA; QA writes a bounded positive/negative plan and validates the final revision. Existing flat FEAT records and their decisions remain unchanged. Repository instructions and agent definitions are updated; no Dot trigger was installed or activated here. See [the workflow](../features/README.md).
 
 ## FEAT-002: zonas de arrastre en Mi semana (2026-11-20)
 
