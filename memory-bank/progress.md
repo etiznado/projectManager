@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22.
 
+## Jarvis role handoff clarification (2026-11-22)
+
+Updated `AGENTS.md` and `features/README.md` to route Jarvis feature requests through a Codex task that can load the project `pm_*` agent types, with a work-tree and role preflight before claiming a phase. The failed Jarvis surface had neither a usable Git work tree nor role invocation; no feature implementation was attempted there. This local work tree and role availability were confirmed. Verification: `dotnet build RaceIT.ProjectManager.sln` passed with 0 warnings/errors; `dotnet test RaceIT.ProjectManager.sln` passed 69/69. Jarvis launch and end-to-end phase handoff remain untested; no Jarvis configuration or trigger was changed.
+
 ## Feature workflow documentation (2026-11-22)
 
 Defined the new feature directory and four file templates, the Jarvis handoff order, role write boundaries, owner approval gates, and QA's focused positive/negative test plan. Updated the five `.codex/agents` definitions so Analyst writes requirements, Architect writes design, Reviewer can make scoped code/test corrections, and QA writes and executes the test plan after review. The existing FEAT-001 through FEAT-005 files were not migrated. No Dot automation was configured by this repository change. See [the workflow](../features/README.md).

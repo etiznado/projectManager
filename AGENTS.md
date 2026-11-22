@@ -24,3 +24,5 @@ dotnet test RaceIT.ProjectManager.sln
 ## Feature flow
 
 For a registered feature, use the [feature flow](features/README.md) and its feature file. For new features, require tagged Gherkin acceptance scenarios in `requirements.md` before `Ready`. Invoke the Codex roles per phase; validate QA and UI approval where applicable. Technical approval does not authorize publishing or merging a PR.
+
+When Jarvis launches the workflow, this Codex task coordinates the phases. Check the repository work tree and the available `pm_*` agent types before claiming work. Spawn each role by its actual `agent_type`, not by naming a generic subagent after it. If the runtime lacks a required role, report the missing capability to Jarvis and leave that phase unclaimed; Jarvis can start a Codex task in an environment that exposes the project roles. See the Jarvis activation instructions in the feature flow.

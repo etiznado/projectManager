@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22 (America/Denver).
 
+## Jarvis-to-Codex feature handoff clarification (2026-11-22)
+
+The failed Jarvis launch ran in a surface without the configured Codex role types or a Git work tree; its report correctly stopped before implementation. The repository role files are tracked, and this local Codex runtime exposes all five `pm_*` agent types. `git rev-parse --show-toplevel` resolves to this repository; `git status` works. The workflow now directs Jarvis to start a Codex task in this repository and lets that task invoke each real `agent_type` after a work-tree and role preflight. This changes coordination instructions only; it does not configure Jarvis itself or start a feature. Local build passed with 0 warnings/errors and 69/69 tests passed. See [feature workflow](../features/README.md#jarvis-activation).
+
 ## Feature workflow for future requests (2026-11-22)
 
 The owner defined a new Jarvis-coordinated order for future features: Requirements Analyst → Architect → Developer → Reviewer → QA. New features use `features/FEAT-NNN/` with `README.md`, `requirements.md`, `design.md`, and `test-plan.md`. The analyst drafts concise requirements from the owner's informal request; the architect writes the design against approved requirements; the reviewer may correct implementation code before QA; QA writes a bounded positive/negative plan and validates the final revision. Existing flat FEAT records and their decisions remain unchanged. Repository instructions and agent definitions are updated; no Dot trigger was installed or activated here. See [the workflow](../features/README.md).
