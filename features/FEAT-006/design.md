@@ -2,17 +2,21 @@
 
 ## Requirements revision
 
-- Approved requirements reference:
+- Approved scope: `features/FEAT-006/requirements.md`, Git blob `cb86665c65e6363487bc816ce9189bd4704af7d2`, on isolated branch `feature/feat-006-theme-toggle` from `b2268bbfc875204004797760b35d00fa6b6b92dd`. The owner authorized local implementation on November 22, 2026. UI review remains required.
 
 ## Technical approach
 
-- Current behavior and code evidence:
-- Proposed changes and affected files:
-- Data or migration impact:
-- UI impact and preview approach:
+- Current behavior and code evidence: `Components/Layout/MainLayout.razor` renders the shared header inside `AuthorizeView`, with navigation, user name, and logout; `Routes.razor` uses this layout for routed pages and `App.razor` hosts `Routes` as Interactive Server. `wwwroot/app.css` defines only a dark palette in `:root`; it also has fixed dark header and input colors and `color-scheme: dark` for date fields. No theme state or theme tests exist. `Program.cs` has scoped application services and the Development startup may seed SQL data.
+- Add a small scoped `ThemeState` service, defaulting to Light, registered in `Program.cs`. Its only mutable value is the current theme for the running Blazor circuit. Do not use cookies, local/session storage, query parameters, system preference, database, or account state. A new page load creates a new circuit and Light state.
+- Inject `ThemeState` into `MainLayout.razor`. Add one native `type="button"` control inside the authorized header, before the user/logout controls. Label it visibly as `Modo oscuro` and expose its state through `aria-pressed`; mouse click, Enter, and Space use the native button behavior. Its click changes the scoped value and rerenders the layout without navigation or a full reload. Keep the routed `@Body` component identity and its form/modal state intact. The toggle does not appear on anonymous `/login`.
+- Set a theme class on the authorized header from `ThemeState`. In `app.css`, make Light the default `:root` variables, then override variables and `color-scheme` on `body:has(.app-header.theme-dark)`. CSS custom properties inherit into the header, main content, and modals without modifying the DOM outside the layout or adding JavaScript. The body remains the existing direct parent of `.app-header` and `.app-body`, preserving the Mi semana height selectors. A full document reload removes the class and creates a fresh Light state; internal Interactive Server navigation retains the scoped value. Check that layout recreation within the same circuit still reads that value.
+- Use semantic palette variables for all theme sensitive surfaces, text, borders, inputs, button text, badges, selected/hover states, scrollbar, modal, and status colors. Replace fixed dark surfaces and the date-field dark-only scheme; retain distinct running/paused/risk/ok meanings and white schedule-bar lettering only where contrast supports it. Keep `#blazor-error-ui` readable as its independent light-only recovery surface.
+- Expected affected implementation files: `Services/ThemeState.cs` (new), `Program.cs`, `Components/Layout/MainLayout.razor`, `wwwroot/app.css`; focused tests in `tests/RaceIT.ProjectManager.Tests/ThemeStateTests.cs` if the service has behavior worth testing. No change to page features, login/logout endpoints, authorization, entities, migrations, or SQL.
+- Data or migration impact: none.
+- UI impact and preview approach: one compact toggle in the signed-in header; both palettes cover existing screens and controls. QA needs browser checks on a private temporary preview with synthetic data. Any app launch must use an exclusively verified loopback and fixture target that cannot touch an existing SQL database; Development startup seeds, so do not launch it against an unverified connection. If no safe route exists, record the UI cases as BLOCKED, not PASS.
 
 ## Risks and verification
 
-- Regression boundaries:
-- Implementation tests and checks:
-- Open decisions or blockers:
+- Regression boundaries: rerender must preserve in-progress form values, open modal, selected activity, and current URL. Internal navigation must retain the theme; full reload and new opening must reset it. Header wrapping at narrow widths and Mi semana viewport sizing need visual checks. Native date picker and form controls need contrast in both modes. Existing work, plan hours, permissions, and authentication behavior are outside this change.
+- Implementation tests and checks: run `dotnet build RaceIT.ProjectManager.sln` and `dotnet test RaceIT.ProjectManager.sln` from the isolated checkout with .NET 10, without SQL. Verify `git diff --check`. QA should exercise Light default, bidirectional mouse/keyboard toggle without reload or work loss, internal navigation, full reload reset, anonymous login exclusion, and readability on relevant screens with synthetic data; cap the focused plan at six cases unless risk warrants more. Automated unit tests can check default and bidirectional `ThemeState` behavior, but cannot establish rendered UI or navigation behavior.
+- Open decisions or blockers: no requirement ambiguity. A safe private visual preview is environment dependent; do not treat build/test success as visual approval. The owner retains UI and final candidate approval before any Git remote action.

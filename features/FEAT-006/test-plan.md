@@ -2,21 +2,26 @@
 
 ## Revision under test
 
-- Final reviewed revision or artifact:
-- Environment and test data:
+- Checkout: `C:\Users\etizn\source\repos\projectManager-FEAT-006`, branch `feature/feat-006-theme-toggle`, unchanged base HEAD `b2268bbfc875204004797760b35d00fa6b6b92dd`. This is an uncommitted working-tree candidate.
+- Approved requirements blob: `cb86665c65e6363487bc816ce9189bd4704af7d2`; architect design blob: `4641588f087a4ee233bba29a9efd7623f19222c2`.
+- Final reviewed implementation blobs: `Services/ThemeState.cs` `5f9fdc7e83c643c9f651b63cdb8440e3f7f597dd`; `Program.cs` `08b3b82190872f53a249b58ea0f12c0663ff4f90`; `Components/Layout/MainLayout.razor` `80723920f3c22c7bc57bf0822c7f2a1be9925d97`; `wwwroot/app.css` `5015f02971a0aa592f4aa66a20aff9a289b3c713`; `ThemeStateTests.cs` `a4097dd333288bf842f2671a3c917244f42b70f0`. Reviewer approved these without corrections.
+- Environment: Windows, .NET SDK 10.0.404. Automated checks used no SQL Server. No app instance, browser session, database, or fixture was started or modified.
 
 ## Validation cases
 
-Keep at most six focused cases by default. Cover relevant positive and negative paths. Add cases only when the feature's risk requires them and record why.
-
-| ID | Type | Setup and action | Expected result | Actual result and evidence | Status |
+| ID | Type | Setup and action | Expected result and acceptance criterion | Actual result and evidence | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Positive |  |  |  | Not run |
-| 2 | Negative |  |  |  | Not run |
+| 1 | Positive, automated | Instantiate `ThemeState`; toggle twice; instantiate a second state. | Starts Light, changes to Dark and back, and a new state starts Light. Partial evidence toward fresh opening and bidirectional switching. | `ThemeStateTests.StartsLightAndTogglesBothWays` passed in the 70/70 suite. This checks service behavior only; it does not establish browser reload or rendered UI behavior. | PASS |
+| 2 | Positive and negative, UI | On a signed-in page, activate the header toggle by mouse, Enter, and Space in both directions while watching URL and document load. | Immediate Light/Dark change, `aria-pressed` reflects state, no navigation or reload. | Not run. A signed-in preview requires a verified synthetic SQL fixture and exclusive loopback endpoint; neither was available. Source shows a native button in the authorized header, but static inspection does not establish interaction. | BLOCKED |
+| 3 | Positive, UI regression | Enter unsaved data in a form; open an activity modal with selection; toggle twice. | Current page, unsaved values, modal, and selected context remain; existing work is not lost. | Not run for the same preview blocker. Unit tests do not render Blazor components or preserve an actual form/modal. | BLOCKED |
+| 4 | Positive and negative, UI | Set Dark, navigate internally to another page and back; then fully reload and open a fresh page. | Dark persists during interactive navigation; full reload and fresh opening return to Light. | Not run for the same preview blocker. Scoped registration and a default-false state support the intended lifecycle in source, but no browser lifecycle was observed. | BLOCKED |
+| 5 | Negative, UI | Open anonymous `/login`, then sign in with a synthetic user. | No toggle on anonymous login; one toggle appears in the shared signed-in header. | Not run for the same preview blocker. `MainLayout.razor` places the button inside `AuthorizeView.Authorized`; this is source evidence only. | BLOCKED |
+| 6 | Positive, visual | Inspect signed-in Mi semana, Administration, forms, modal, dates, status bars, narrow header, and keyboard focus in both themes using synthetic data. | Text, controls, status meanings, and focus remain readable and usable; private preview is available for owner UI review. | Not run for the same preview blocker. Palette changes compile, but contrast, native controls, and responsive layout were not visually observed. | BLOCKED |
 
 ## Results and limits
 
-- Build and automated tests:
-- UI or integration checks:
-- Overall result: PASS / FAIL / BLOCKED
-- Defects, reproduction steps, and remaining limits:
+- QA reran `dotnet build RaceIT.ProjectManager.sln`: PASS, 0 errors and 0 warnings. QA reran `dotnet test RaceIT.ProjectManager.sln`: PASS, 70 passed, 0 failed, 0 skipped. These commands did not require SQL Server.
+- UI/integration checks: BLOCKED. `Program.cs` configures SQL Server for application services, the provisional sign-in reads `People` from SQL, and Development startup calls `DataSeeder.SeedAsync`. No exclusively verified loopback and synthetic SQL fixture was provided. Starting against an unverified connection could touch an existing database and is outside this QA authorization.
+- Acceptance mapping: criterion 1 (fresh opening/full reload) has only partial unit evidence and remains BLOCKED in the browser; criterion 2 (bidirectional mouse/keyboard, immediate switch, no work loss) remains BLOCKED; criterion 3 (navigation retention and reset) remains BLOCKED; criterion 4 (readability/usability and private preview) remains BLOCKED.
+- Overall result: **BLOCKED** for feature acceptance and UI review. No observed implementation defect was found by the permitted checks. The remaining step is to supply a verified private loopback preview backed by synthetic disposable data, then execute cases 2-6 against these exact reviewed blobs. Any implementation correction requires Developer, Reviewer, and a new QA pass.
+- Reproduction steps for the blocker: inspect `Program.cs` SQL registration, `/session/login` SQL lookup, and Development seeding block; without a verified synthetic target, a signed-in preview cannot be started under the permitted conditions. No SQL, migrations, login, permissions, or app settings were changed.

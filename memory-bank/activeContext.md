@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22 (America/Denver).
 
+## FEAT-006: selector Light/Dark (2026-11-22)
+
+Edgar autorizó el arranque manual en el checkout aislado `C:\Users\etizn\source\repos\projectManager-FEAT-006`, rama `feature/feat-006-theme-toggle`. El candidato local sin commit agrega un estado de tema scoped por circuito, un botón accesible en el encabezado autenticado y paletas CSS Light/Dark. `pm_architect`, `pm_developer`, `pm_reviewer` y `pm_qa` actuaron en ese orden; Reviewer aprobó sin correcciones. Build 0 errores/0 advertencias y 70/70 pruebas. QA: un caso unitario PASS y cinco casos de navegador BLOCKED por falta de loopback exclusivo con fixture SQL ficticio verificado; no se inició app ni SQL. Estado `In Progress`; revisión visual y aprobación final de Edgar pendientes. Expediente y huellas en [FEAT-006](../features/FEAT-006/README.md).
+
 ## Feature workflow for future requests (2026-11-22)
 
 The owner defined a new Jarvis-coordinated order for future features: Requirements Analyst → Architect → Developer → Reviewer → QA. New features use `features/FEAT-NNN/` with `README.md`, `requirements.md`, `design.md`, and `test-plan.md`. The analyst drafts concise requirements from the owner's informal request; the architect writes the design against approved requirements; the reviewer may correct implementation code before QA; QA writes a bounded positive/negative plan and validates the final revision. Existing flat FEAT records and their decisions remain unchanged. Repository instructions and agent definitions are updated; no Dot trigger was installed or activated here. See [the workflow](../features/README.md).
