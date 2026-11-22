@@ -18,6 +18,7 @@ builder.Services.AddAuthentication("Cookies").AddCookie(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<WorkAccess>();
+builder.Services.AddScoped<ThemeState>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

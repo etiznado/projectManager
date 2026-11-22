@@ -6,6 +6,10 @@ Actualizado: 2026-11-22.
 
 Updated `AGENTS.md` and `features/README.md` to route Jarvis feature requests through a Codex task that can load the project `pm_*` agent types, with a work-tree and role preflight before claiming a phase. The failed Jarvis surface had neither a usable Git work tree nor role invocation; no feature implementation was attempted there. This local work tree and role availability were confirmed. Verification: `dotnet build RaceIT.ProjectManager.sln` passed with 0 warnings/errors; `dotnet test RaceIT.ProjectManager.sln` passed 69/69. Jarvis launch and end-to-end phase handoff remain untested; no Jarvis configuration or trigger was changed.
 
+## FEAT-006: selector Light/Dark (2026-11-22)
+
+Implementado localmente en la rama aislada: `ThemeState` scoped inicia Light, el encabezado autenticado incluye botón nativo con `aria-pressed`, y `app.css` aplica variables de paleta según el estado del encabezado. El diseño y el plan de seis casos están en [FEAT-006](../features/FEAT-006/README.md). `pm_reviewer` aprobó el diff sin correcciones; `pm_qa` repitió build (0 errores/0 advertencias), suite completa (70/70) y `git diff --check`. Un caso de estado pasó; cinco casos de UI/navegación/recarga/legibilidad quedaron BLOCKED porque no existe fixture SQL sintético ni loopback exclusivo verificados. No se inició la app ni se tocó SQL. Falta QA visual y aprobación de Edgar del candidato exacto; estado `In Progress`.
+
 ## Feature workflow documentation (2026-11-22)
 
 Defined the new feature directory and four file templates, the Jarvis handoff order, role write boundaries, owner approval gates, and QA's focused positive/negative test plan. Updated the five `.codex/agents` definitions so Analyst writes requirements, Architect writes design, Reviewer can make scoped code/test corrections, and QA writes and executes the test plan after review. The existing FEAT-001 through FEAT-005 files were not migrated. No Dot automation was configured by this repository change. See [the workflow](../features/README.md).

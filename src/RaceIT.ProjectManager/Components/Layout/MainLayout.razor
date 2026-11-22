@@ -1,8 +1,9 @@
 @inherits LayoutComponentBase
+@inject RaceIT.ProjectManager.Services.ThemeState Theme
 
 <AuthorizeView>
     <Authorized Context="session">
-        <header class="app-header">
+        <header class="app-header @(Theme.IsDark ? "theme-dark" : "")">
             <span class="brand">RaceIT · Project Manager</span>
             <nav>
                 <a href="/mi-semana">Mi semana</a>
@@ -15,6 +16,7 @@
                 {
                     <a href="/administracion">Administración</a>
                 }
+                <button type="button" class="theme-toggle secondary" aria-pressed="@Theme.IsDark" @onclick="Theme.Toggle">Modo oscuro</button>
                 <span class="user">@session.User.Identity?.Name</span>
                 <form method="post" action="/session/logout" data-enhance="false">
                     <AntiforgeryToken />
