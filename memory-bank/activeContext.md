@@ -2,6 +2,10 @@
 
 Actualizado: 2026-10-23 (America/Denver).
 
+## FEAT-002: zonas de arrastre en Mi semana (2026-11-20)
+
+En la copia local de Windows, FEAT-002 está `In Progress`. Se añadieron indicadores «Insertar antes» sobre la fila poblada completa y «Agregar al final» en el encabezado y la zona inferior izquierda. La zona inferior derecha permanece sin destino de drop. La limpieza al salir de una fila usa una comprobación geométrica para no ocultar el indicador al cruzar elementos internos. No se cambió `WeeklyPlanService`, la semántica del plan ni la corrección de FEAT-001. Build con salida separada: 0 errores/0 advertencias; la suite no produjo resultado por fallo de conexión `vstest`/`testhost`. QA quedó BLOCKED para aceptación completa; Reviewer aprobó técnicamente el diff corregido con esos límites. Jarvis debe verificar UI y persistencia en Chrome con base SQL aislada autorizada y datos sintéticos antes de avanzar de estado. Revisión exacta y evidencia por rol en [FEAT-002](../features/FEAT-002.md).
+
 ## Pool agrupado por proyecto (2026-10-23)
 
 El pool de Mi semana agrupa las actividades por proyecto con encabezado colapsable (expandido por defecto; el colapso vive en memoria del componente). Regla pura `PoolGrouping.Group`: «Sin proyecto» al inicio y el resto alfabético, conservando el orden de creación dentro de cada grupo. Por decisión del usuario el encabezado muestra solo el nombre, sin iniciativa y sin encabezados fijos. Verificado: build 0 errores/0 advertencias y 69/69 pruebas xUnit; revisión visual pendiente. Detalle en `progress.md`.
@@ -220,3 +224,7 @@ El detalle de la actividad (antes al fondo de la página) ahora se abre como mod
 
 Se quitó el botón Cerrar del modal (quedan la ✕, el clic en el fondo y Escape). El nombre del proyecto en el modal usa la clase `.project-name` (color acento). Las barras se distinguen por estado de trabajo: amarillo brillante (`schedule-bar.running`, variable `--running`, con brillo) si la actividad tiene una sesión abierta (contador activo) y amarillo pálido (`schedule-bar.in-progress`, variable `--paused`) si está iniciada pero pausada. Se añadieron `Status` y `HasOpenSession` a `BlockVm` y `WorkRecordService.ListOpenSessionActivityIdsAsync` para conocer las sesiones abiertas. Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
 
+
+## FEAT-001: unidad de horas en Mi semana (2026-11-20)
+
+Autorizada por Edgar para la copia local. El resumen del modal usa `Format` sin añadir una segunda unidad literal; no cambian números, límites ni guardado. Build correcto (0 errores/advertencias), 69/69 pruebas. Revisión visual de Jarvis en Windows con SQL aislado y datos sintéticos pendiente; FEAT-001 sigue In Progress. Ver [expediente FEAT-001](../features/FEAT-001.md).

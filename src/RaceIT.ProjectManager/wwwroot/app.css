@@ -175,6 +175,30 @@ tr.selected { background: rgba(63, 124, 255, .14); }
 
 .schedule-drop-tail, .schedule-tail-track { min-height: 44px; border-top: 1px solid var(--panel-border); }
 .schedule-drop-tail.drop-active { background: rgba(63,124,255,.12); box-shadow: inset 0 3px var(--accent); }
+.schedule-row.drop-before { position: relative; box-shadow: inset 0 3px var(--accent); }
+.schedule-row.drop-before::after,
+.schedule-heading.drop-active::after,
+.schedule-drop-tail.drop-active::after {
+    content: "Insertar antes";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    padding: .15rem .45rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    background: var(--panel);
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.schedule-heading.drop-active,
+.schedule-drop-tail.drop-active { position: relative; background: rgba(63,124,255,.12); }
+.schedule-heading.drop-active::after,
+.schedule-drop-tail.drop-active::after { content: "Agregar al final"; }
 
 .week-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; overflow-x: auto; }
 .week-toolbar .week-nav { flex-wrap: nowrap; flex-shrink: 0; margin-bottom: 0; }

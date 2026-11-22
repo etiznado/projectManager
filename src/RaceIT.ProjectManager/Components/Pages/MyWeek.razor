@@ -1,5 +1,7 @@
 @page "/mi-semana"
 @attribute [Authorize]
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 @inject ActivityService Activities
 @inject WorkRecordService Time
 @inject WeeklyPlanService Plan
@@ -78,7 +80,8 @@
 
         <section class="panel plan">
             <div class="week-schedule" style="@ScheduleRows">
-                <div class="schedule-heading" @ondragover:preventDefault @ondrop="() => DropAsync(null)">Actividad</div>
+                <div class="schedule-heading @(dropBeforeId == -1 && appendAtHeading ? "drop-active" : "")"
+                     @ref="headingDropElement" @ondragover:preventDefault @ondragenter="() => EnterDropTarget(-1, true)" @ondragleave="e => LeaveDropTargetAsync(-1, headingDropElement, e, true)" @ondrop="() => DropAsync(null)">Actividad</div>
                 <div class="schedule-days">
                     @foreach (var day in workingDays)
                     {
@@ -89,7 +92,7 @@
                 {
                     var segments = view.Layout.Segments(block.StartOffset, block.Hours);
                     <div @key="block.BlockId" class="schedule-row @(dropBeforeId == block.BlockId ? "drop-before" : "")"
-                         @ondragover:preventDefault @ondragenter="() => dropBeforeId = block.BlockId" @ondrop="() => DropAsync(block.BlockId)">
+                         @ref="block.DropElement" @ondragover:preventDefault @ondragenter="() => EnterDropTarget(block.BlockId)" @ondragleave="e => LeaveDropTargetAsync(block.BlockId, block.DropElement, e)" @ondrop="() => DropAsync(block.BlockId)">
                         <div class="schedule-context">
                             <span class="drag-grip" draggable="true" title="Arrastrar para reordenar" @ondragstart="() => BeginDrag(null, block.BlockId)" @ondragend="EndDrag">⠿</span>
                             <button class="activity-select" @onclick="() => SelectAsync(block.ActivityId)"><strong>@block.Title</strong><span class="muted">@(block.ProjectName ?? "Sin proyecto")</span></button>
@@ -126,11 +129,11 @@
                         </div>
                     </div>
                 }
-                <div class="schedule-context schedule-drop-tail @(dropBeforeId == -1 ? "drop-active" : "")"
-                     @ondragover:preventDefault @ondragenter="() => dropBeforeId = -1" @ondrop="() => DropAsync(null)">
+                <div class="schedule-context schedule-drop-tail @(dropBeforeId == -1 && !appendAtHeading ? "drop-active" : "")"
+                     @ref="tailDropElement" @ondragover:preventDefault @ondragenter="() => EnterDropTarget(-1)" @ondragleave="e => LeaveDropTargetAsync(-1, tailDropElement, e)" @ondrop="() => DropAsync(null)">
                     @if (blocks.Count == 0) { <span class="muted">Arrastra aquí una actividad.</span> }
                 </div>
-                <div class="schedule-track schedule-tail-track">
+                <div class="schedule-track schedule-tail-track" @ondragenter="ClearDropTarget">
                     @for (var i = 1; i < workingDays.Count; i++)
                     {
                         <div class="schedule-gridline" style="left:@Pct(i, workingDays.Count)%"></div>
@@ -223,7 +226,7 @@
                         }
                         else
                         {
-                            <p class="muted">Planeadas esta semana: @Format(blockHoursInput.Hours) h · máximo @Format(blockHoursInput.MaxHours) h (pendientes).</p>
+                            <p class="muted">Planeadas esta semana: @Format(blockHoursInput.Hours) · máximo @Format(blockHoursInput.MaxHours) (pendientes).</p>
                             <button class="secondary" @onclick="() => showBlockHours = true">Editar horas planeadas</button>
                         }
                     </div>
@@ -267,7 +270,7 @@
 }
 
 @code {
-    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; public decimal StartOffset; public decimal EndOffset; public decimal LeftPercent; public decimal SpanPercent; public decimal OverflowHours; public ActivityStatus Status; public bool HasOpenSession; }
+    private sealed class BlockVm { public int BlockId; public int ActivityId; public string Title = ""; public string? ProjectName; public decimal Hours; public decimal Progress; public decimal StartOffset; public decimal EndOffset; public decimal LeftPercent; public decimal SpanPercent; public decimal OverflowHours; public ActivityStatus Status; public bool HasOpenSession; public ElementReference DropElement; }
 
     private List<ActivityService.ActivityRow> pool = [];
     private IReadOnlyList<ActivityPoolGroup> poolGroups = [];
@@ -299,6 +302,11 @@
     private int? draggedActivityId;
     private int? draggedBlockId;
     private int? dropBeforeId;
+    private bool appendAtHeading;
+    private long dropTargetVersion;
+    private ElementReference headingDropElement;
+    private ElementReference tailDropElement;
+    private IJSObjectReference? dropModule;
     private bool savingDrop;
     private bool poolCollapsed;
 
@@ -307,13 +315,47 @@
         if (savingDrop) return;
         draggedActivityId = activityId;
         draggedBlockId = blockId;
+        ClearDropTarget();
+    }
+
+    private void EnterDropTarget(int target, bool heading = false)
+    {
+        if (draggedActivityId is null && draggedBlockId is null) return;
+        dropTargetVersion++;
+        dropBeforeId = target;
+        appendAtHeading = heading;
+    }
+
+    private async Task LeaveDropTargetAsync(int target, ElementReference element, DragEventArgs e, bool heading = false)
+    {
+        var version = dropTargetVersion;
+        try
+        {
+            dropModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./weekDrop.js");
+            var stillInside = await dropModule.InvokeAsync<bool>("containsPoint", element, e.ClientX, e.ClientY);
+            if (!stillInside && dropTargetVersion == version && dropBeforeId == target && appendAtHeading == heading)
+                ClearDropTarget();
+        }
+        catch (JSDisconnectedException) { ClearDropTarget(); }
+    }
+
+    private void ClearDropTarget()
+    {
+        dropTargetVersion++;
+        dropBeforeId = null;
+        appendAtHeading = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (dropModule is not null) { try { await dropModule.DisposeAsync(); } catch (JSDisconnectedException) { } }
     }
 
     private void EndDrag()
     {
         draggedActivityId = null;
         draggedBlockId = null;
-        dropBeforeId = null;
+        ClearDropTarget();
     }
 
     private async Task DropAsync(int? beforeBlockId)

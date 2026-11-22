@@ -15,19 +15,32 @@
 - Base **recreada vacía** el 2026-10-21 por decisión del usuario; migraciones `InitialModel`, `Continuations` y `WorkweekEightFive` aplicadas; semilla del Administrador (Persona Id=1, jornada 8/8/8/8/8/5/0).
 - Migraciones en `src/RaceIT.ProjectManager/Migrations/` (no `Data/Migrations`).
 
-## Comandos
+## Compilar y probar
 
-```bash
+Desde la raíz con un SDK .NET 10:
+
+~~~text
 dotnet build RaceIT.ProjectManager.sln
 dotnet test RaceIT.ProjectManager.sln
-dotnet run --project src/RaceIT.ProjectManager
-export ASPNETCORE_ENVIRONMENT=Development        # requerido para ef y base (conexión en Development)
-dotnet ef migrations add <Nombre> --project src/RaceIT.ProjectManager
-dotnet ef database update --project src/RaceIT.ProjectManager
-dotnet ef database drop --force --project src/RaceIT.ProjectManager
-```
+~~~
 
-VS Code: F5 con RaceIT.ProjectManager (Blazor). HTTP http://localhost:5208. Si el proceso bloquea la DLL, compilar con `dotnet build ... -p:BaseOutputPath=bin/verification/`.
+En Codex Cloud, verifica que el entorno tenga el SDK .NET 10. La suite no necesita SQL Server ni acceso al SQL Express de Windows.
+
+## Arranque e integración SQL en Windows
+
+Solo para desarrollo local con una base de desarrollo revisada. La app puede sembrar datos en Development: no la inicies contra una base existente o compartida sin verificar el destino. Codex no ejecuta estos pasos SQL sin autorización explícita. Cualquier creación/aplicación de migraciones o intervención sobre la base se decide y se ejecuta de forma manual.
+
+~~~powershell
+dotnet run --project src/RaceIT.ProjectManager
+
+# Solo al autorizar una actualización SQL y confirmar el destino:
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+dotnet tool restore
+dotnet ef database update --project src/RaceIT.ProjectManager
+~~~
+
+VS Code: F5 con RaceIT.ProjectManager (Blazor). HTTP http://localhost:5208. Si el proceso bloquea la DLL, usa una salida de compilación separada: `dotnet build RaceIT.ProjectManager.sln -p:BaseOutputPath=bin/verification/`.
+
 
 ## Pruebas
 
@@ -36,7 +49,7 @@ VS Code: F5 con RaceIT.ProjectManager (Blazor). HTTP http://localhost:5208. Si e
 
 ## Verificación visual
 
-No se dispone de navegador automatizable. No presentar compilación/HTTP como prueba visual de interacción. `app.css` se enlaza con `@Assets["app.css"]` en `App.razor`; en Development el nombre no lleva huella de contenido, así que tras editar CSS conviene pedir una recarga forzada (Ctrl+F5) antes de juzgar un cambio visual, para no confundirlo con una hoja de estilos en caché.
+Si el entorno no tiene navegador o interfaz disponibles, reporta la revisión visual como pendiente. No presentar compilación/HTTP como prueba visual de interacción. `app.css` se enlaza con `@Assets["app.css"]` en `App.razor`; en Development el nombre no lleva huella de contenido, así que tras editar CSS conviene pedir una recarga forzada (Ctrl+F5) antes de juzgar un cambio visual, para no confundirlo con una hoja de estilos en caché.
 
 ### Jornada confirmada de 45 h (2026-10-20)
 

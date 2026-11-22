@@ -1,21 +1,26 @@
-﻿# Guía para trabajar en RaceIT.ProjectManager
+# Instrucciones para Codex: RaceIT.ProjectManager
 
-## Contexto persistente
+## Antes de cambiar algo
 
-Antes de trabajar, leer memory-bank/README.md y seguir su orden de lectura, en especial activeContext.md y progress.md. Consultar código y migraciones para comprobar el estado real. La solicitud actual del usuario prevalece sobre notas históricas.
+- Empieza por [memory-bank/README.md](memory-bank/README.md). Lee el diseño vigente, el contexto activo y el progreso; consulta los patrones y el contexto técnico según la tarea.
+- Contrasta la documentación con el código, las pruebas y, si corresponde, las migraciones. Distingue lo implementado, lo probado y lo pendiente. No inicies trabajo pendiente sin que el usuario lo pida.
+- Mantén las convenciones del repositorio: namespace `RaceIT.ProjectManager`; .NET 10, Blazor Interactive Server, EF Core y SQL Server.
+- Conserva el plan original y no edites las horas planeadas originales de las actividades. Distingue horas laborables, esperas de 24 horas y fechas manuales; no confundas plan con pronóstico. Edita actividades en modal, conserva el contexto seleccionado y refresca la lista al cerrar.
 
-Al completar cambios relevantes, actualizar activeContext.md, progress.md y los documentos técnicos o de producto afectados. Distinguir lo implementado de lo propuesto, y lo probado de lo pendiente. No guardar secretos ni credenciales en el memory bank.
+## Verificación y límites
 
-## Acuerdos esenciales
+Desde la raíz, con el SDK .NET 10:
 
-- Compañía RaceIT; namespace raíz RaceIT.ProjectManager.
-- .NET 10, Blazor Interactive Server, EF Core y SQL Server. Desarrollo local primero.
-- Distinguir trabajo en horas laborables, espera en días naturales de 24 horas y fechas manuales para proyectos flexibles sin horas; preservar el tipo del plan y del pronóstico por separado.
-- Conservar el plan original; el usuario decidió mantener horas planeadas sin edición por ahora.
-- Edición de actividades en modal; conservar iniciativa/proyecto seleccionados y refrescar lista al cerrar.
-- No iniciar trabajo pendiente solo porque aparezca en el memory bank; respetar el alcance de la solicitud.
-- No sobrescribir datos capturados por el usuario con datos de ejemplo.
+```text
+dotnet build RaceIT.ProjectManager.sln
+dotnet test RaceIT.ProjectManager.sln
+```
 
-Comandos y particularidades del entorno en memory-bank/techContext.md.
+- Las pruebas de la solución no requieren SQL Server. En Codex Cloud usa build y pruebas sin asumir que existe la instancia local de Windows.
+- La app y la integración SQL local usan SQL Server Express en Windows. No inicies la app contra una base existente sin comprobar el destino: en Development puede sembrar datos.
+- No crees ni apliques migraciones, ni borres, recrees o cambies bases o datos, sin autorización explícita. Los pasos SQL en el contexto técnico son para ejecución manual.
+- Al terminar un cambio material, actualiza solo las notas afectadas (normalmente `activeContext.md` y `progress.md`), preserva el historial y reporta qué verificaste. No guardes credenciales ni reemplaces datos del usuario por datos de ejemplo.
 
+## Flujo de features
 
+Para una feature registrada, usa el [flujo de features](features/README.md) y su expediente. Invoca los roles de Codex por fase; valida QA y la aprobación de la UI si aplica. La aprobación técnica no autoriza publicar ni fusionar un PR.

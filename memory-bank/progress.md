@@ -242,3 +242,11 @@ El detalle de la actividad (antes al fondo de la página) ahora se abre como mod
 
 Se quitó el botón Cerrar del modal (quedan la ✕, el clic en el fondo y Escape). El nombre del proyecto en el modal usa la clase `.project-name` (color acento). Las barras se distinguen por estado de trabajo: amarillo brillante (`schedule-bar.running`, variable `--running`, con brillo) si la actividad tiene una sesión abierta (contador activo) y amarillo pálido (`schedule-bar.in-progress`, variable `--paused`) si está iniciada pero pausada. Se añadieron `Status` y `HasOpenSession` a `BlockVm` y `WorkRecordService.ListOpenSessionActivityIdsAsync` para conocer las sesiones abiertas. Build 0 errores/0 advertencias y 33 pruebas xUnit correctas; revisión visual en navegador pendiente.
 
+
+## FEAT-001: unidad de horas en Mi semana (2026-11-20)
+
+Autorizada por Edgar para la copia local. El resumen del modal usa `Format` sin añadir una segunda unidad literal; no cambian números, límites ni guardado. Build correcto (0 errores/advertencias), 69/69 pruebas. Revisión visual de Jarvis en Windows con SQL aislado y datos sintéticos pendiente; FEAT-001 sigue In Progress. Ver [expediente FEAT-001](../features/FEAT-001.md).
+
+## FEAT-002: destinos visibles de arrastre (2026-11-20)
+
+Implementada localmente la señal «Insertar antes» en toda fila poblada y «Agregar al final» en el encabezado y la cola izquierda. La cuadrícula vacía inferior derecha no acepta drop. Reviewer detectó un problema potencial al cruzar hijos de la fila; Developer lo corrigió con comprobación geométrica y QA repitió la revisión estática. Build con salida separada: 0 errores/0 advertencias; `git diff --check` sin errores. `dotnet test` no dio resultado: `vstest` no conectó con `testhost` tras 90 s. QA: BLOCKED para criterios interactivos y persistencia; Reviewer: aprobación técnica limitada. Estado `In Progress`; falta revisión de Jarvis en Chrome con SQL aislado autorizado y datos sintéticos. Revisión exacta y evidencia en [FEAT-002](../features/FEAT-002.md).

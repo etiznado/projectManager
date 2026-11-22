@@ -4,7 +4,9 @@
 
 Contexto persistente del proyecto. Describe acuerdos y estado comprobado; no sustituye al código ni convierte propuestas en requisitos aprobados.
 
-## Orden de lectura
+## Punto de entrada para Codex y orden de lectura
+
+Codex comienza en [AGENTS.md](../AGENTS.md). Conserva este índice como mapa del contexto, no como una lista de tareas.
 
 1. Project_Manager_Notas_Diseno.md: diseño vigente del MVP (fuente de verdad).
 2. activeContext.md: última decisión y trabajo inmediato.
@@ -23,7 +25,4 @@ Estado real en `activeContext.md` y `progress.md`: implementadas las Etapas 1–
 
 Cambios posteriores de este chat (2026-10-22–23): Usuario puede crear proyectos independientes y actividades propias; Mi semana restringe la actividad nueva a proyectos del responsable actual. Administración organiza Personas, Iniciativas, Proyectos, Actividades y Plantillas en secciones, cada una con un formulario compartido de creación/edición arriba y lista abajo. Eliminar plantillas pide confirmación. La bolsa semanal y la jornada diaria se editan de forma independiente en Personas; cambiar la bolsa conserva las horas por día. Las fechas meta editables de iniciativas y proyectos usan `InputDate` con icono de calendario del navegador. El timeline de Mi semana reparte el ancho en carriles de igual tamaño por día laborable (los días sin horas no ocupan espacio) y marca «fuera de jornada» el exceso sobre la jornada sumada. El pool agrupa las actividades por proyecto en encabezados colapsables, con «Sin proyecto» al inicio. Ver `activeContext.md` y `progress.md` para alcance exacto y verificación.
 
-Mensaje sugerido para un chat nuevo desde la carpeta del repositorio:
-
-> Lee AGENTS.md y el memory bank, empezando por `Project_Manager_Notas_Diseno.md` y `activeContext.md`. El modelo anterior quedó descartado; no asumas que milestones, bloqueos o el motor de fechas existen.
-
+En un chat nuevo de Codex, describe la tarea concreta. No es necesario copiar el memory bank ni volver a escribir las reglas de AGENTS.md.
