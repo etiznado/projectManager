@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22.
 
+## Architect issue-label claim (2026-11-22)
+
+Updated `AGENTS.md`, `features/README.md`, and `pm_architect.toml` so the Architect changes `ready` to `inprogress` at the start of the authorized Architect phase, confirms the final label state, and reports the claim for the coordinator's issue comment. Build passed with 0 warnings/errors and tests passed 70/70. No issue was supplied and no label operation was run; end-to-end verification remains pending.
+
 ## Issue-comment feature workflow (2026-11-22)
 
 Updated `AGENTS.md`, `features/README.md`, the four `features/_template` content guides, and all five `.codex/agents/pm_*.toml` definitions. New feature artifacts and role handoffs go to the supplied GitHub issue as full Markdown comments, with permalink/read-back verification, exact revision references, and append-only new versions after approvals or gate-affecting changes. Existing FEAT records were retained. Build passed with 0 warnings/errors and tests passed 70/70. No issue was provided, so no GitHub comment was posted and the flow has not been tested end to end.

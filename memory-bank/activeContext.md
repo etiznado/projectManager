@@ -2,6 +2,10 @@
 
 Actualizado: 2026-11-22 (America/Denver).
 
+## First agent claim changes issue label (2026-11-22)
+
+Owner clarified the issue-backed feature flow: after requirements approval and execution authorization, the Architect is the first agent to work from `Ready`. It changes the supplied issue label from `ready` to `inprogress`, preserving unrelated labels, and verifies the issue before design work. Unexpected or partial label states block the phase until reconciled. The coordinator records the verified claim in the issue's feature record comment. This updates instructions only; no issue was supplied and no label was changed here.
+
 ## GitHub issue as new feature record (2026-11-22)
 
 Owner changed the feature workflow: direct Codex requests must supply a GitHub issue number/URL; Jarvis supplies it in its launch. For new feature work, the issue is the canonical record. The coordinator posts state/decision/handoff references, while Analyst, Architect, Developer, Reviewer, and QA post their complete outputs as distinct issue comments. Comment permalinks and exact code revisions drive gates; approved requirements are versioned with a new comment and reapproved when changed. New `features/FEAT-NNN/` directories and implementation logs are no longer created. Existing FEAT files and the `_template` files remain historical evidence and content guides. Repository instructions and the five role definitions were updated; no issue was supplied in this task, so no comment was posted and no end-to-end comment handoff was exercised. See [feature workflow](../features/README.md).
