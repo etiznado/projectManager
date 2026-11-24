@@ -1,6 +1,24 @@
 # Progress
 
-Actualizado: 2026-11-22.
+Actualizado: 2026-11-23.
+
+## Scope approval and Codex artifact ownership (2026-11-23)
+
+Updated only workflow instructions in `AGENTS.md`, `features/README.md`, all five `.codex/agents/pm_*.toml` roles, the four `_template` guides, and these affected memory notes. Jarvis's exact-scope approval/ready gate now precedes the complete Codex flow, including Gherkin without a second in-scope approval. Architect retains the verified label transition after Gherkin and before design. Codex must publish and verify its own artifacts or stop and report BLOCKED to Jarvis; no Jarvis artifact fallback. Material scope changes follow Edgar's approval or express feature-specific delegation. Jarvis marks completed only on Edgar's confirmation; required UI, merge, and deployment approvals remain. Earlier workflow entries below are historical and superseded on these points. Historical feature files, including FEAT-007 wherever already recorded, were not changed, nor were app code, monitors, actual GitHub issues, SQL, or migrations. No commit, push, PR, or merge was made.
+
+Verification: instruction consistency review and `git diff --check` passed. Standard build/test commands exited unsuccessfully without an actionable diagnostic; build with `-m:1` passed (0 warnings/errors). Tests with `-m:1` reached vstest but were aborted after its 90-second testhost connection timeout; no test PASS is claimed. Test verification is BLOCKED by the runner connection failure. The GitHub workflow itself was not exercised.
+
+## Architect issue-label claim (2026-11-22)
+
+Updated `AGENTS.md`, `features/README.md`, and `pm_architect.toml` so the Architect changes `ready` to `inprogress` at the start of the authorized Architect phase, confirms the final label state, and reports the claim for the coordinator's issue comment. Build passed with 0 warnings/errors and tests passed 70/70. No issue was supplied and no label operation was run; end-to-end verification remains pending.
+
+## Issue-comment feature workflow (2026-11-22)
+
+Updated `AGENTS.md`, `features/README.md`, the four `features/_template` content guides, and all five `.codex/agents/pm_*.toml` definitions. New feature artifacts and role handoffs go to the supplied GitHub issue as full Markdown comments, with permalink/read-back verification, exact revision references, and append-only new versions after approvals or gate-affecting changes. Existing FEAT records were retained. Build passed with 0 warnings/errors and tests passed 70/70. No issue was provided, so no GitHub comment was posted and the flow has not been tested end to end.
+
+## Jarvis role handoff clarification (2026-11-22)
+
+Updated `AGENTS.md` and `features/README.md` to route Jarvis feature requests through a Codex task that can load the project `pm_*` agent types, with a work-tree and role preflight before claiming a phase. The failed Jarvis surface had neither a usable Git work tree nor role invocation; no feature implementation was attempted there. This local work tree and role availability were confirmed. Verification: `dotnet build RaceIT.ProjectManager.sln` passed with 0 warnings/errors; `dotnet test RaceIT.ProjectManager.sln` passed 69/69. Jarvis launch and end-to-end phase handoff remain untested; no Jarvis configuration or trigger was changed.
 
 ## FEAT-006: selector Light/Dark (2026-11-22)
 

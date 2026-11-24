@@ -1,6 +1,24 @@
 # Active context
 
-Actualizado: 2026-11-22 (America/Denver).
+Actualizado: 2026-11-23 (America/Denver).
+
+## Approved scope launches the complete issue flow (2026-11-23)
+
+Edgar corrected the workflow instructions: Jarvis creates a Draft issue with only requested scope, obtains Edgar's approval of that exact scope, and marks ready. Codex then runs Analyst (tagged Gherkin) → Architect → Developer → Reviewer → QA without a second approval of in-scope Gherkin or new per-phase authorizations. After verified Gherkin, Architect verifies approved scope and requirements, then verifies ready → inprogress before design. Material scope changes require Edgar's approval unless expressly delegated for that feature. Codex authors, posts, and reads back its own artifacts; posting or verification failure stops the phase and is reported BLOCKED to Jarvis, which must not draft or publish those artifacts. Jarvis marks completed only after Edgar confirms completion. Required UI, merge, and deployment approvals remain. Historical records, including FEAT-007, remain prior evidence; earlier workflow notes below are history and are superseded where they conflict with this entry and [the current workflow](../features/README.md).
+
+This task changes instructions only on `feature/AgentGithubIssueIntegration`; no app code, monitors, actual issues, labels, or historical feature files were changed. Checkout and clean Git state were verified before editing. Verification results are recorded in progress.md; no end-to-end GitHub flow was exercised.
+
+## First agent claim changes issue label (2026-11-22)
+
+Owner clarified the issue-backed feature flow: after requirements approval and execution authorization, the Architect is the first agent to work from `Ready`. It changes the supplied issue label from `ready` to `inprogress`, preserving unrelated labels, and verifies the issue before design work. Unexpected or partial label states block the phase until reconciled. The coordinator records the verified claim in the issue's feature record comment. This updates instructions only; no issue was supplied and no label was changed here.
+
+## GitHub issue as new feature record (2026-11-22)
+
+Owner changed the feature workflow: direct Codex requests must supply a GitHub issue number/URL; Jarvis supplies it in its launch. For new feature work, the issue is the canonical record. The coordinator posts state/decision/handoff references, while Analyst, Architect, Developer, Reviewer, and QA post their complete outputs as distinct issue comments. Comment permalinks and exact code revisions drive gates; approved requirements are versioned with a new comment and reapproved when changed. New `features/FEAT-NNN/` directories and implementation logs are no longer created. Existing FEAT files and the `_template` files remain historical evidence and content guides. Repository instructions and the five role definitions were updated; no issue was supplied in this task, so no comment was posted and no end-to-end comment handoff was exercised. See [feature workflow](../features/README.md).
+
+## Jarvis-to-Codex feature handoff clarification (2026-11-22)
+
+The failed Jarvis launch ran in a surface without the configured Codex role types or a Git work tree; its report correctly stopped before implementation. The repository role files are tracked, and this local Codex runtime exposes all five `pm_*` agent types. `git rev-parse --show-toplevel` resolves to this repository; `git status` works. The workflow now directs Jarvis to start a Codex task in this repository and lets that task invoke each real `agent_type` after a work-tree and role preflight. This changes coordination instructions only; it does not configure Jarvis itself or start a feature. Local build passed with 0 warnings/errors and 69/69 tests passed. See [feature workflow](../features/README.md#jarvis-activation).
 
 ## FEAT-006: selector Light/Dark (2026-11-22)
 
