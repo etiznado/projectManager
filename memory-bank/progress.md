@@ -1,6 +1,12 @@
 # Progress
 
-Actualizado: 2026-11-22.
+Actualizado: 2026-11-23.
+
+## Scope approval and Codex artifact ownership (2026-11-23)
+
+Updated only workflow instructions in `AGENTS.md`, `features/README.md`, all five `.codex/agents/pm_*.toml` roles, the four `_template` guides, and these affected memory notes. Jarvis's exact-scope approval/ready gate now precedes the complete Codex flow, including Gherkin without a second in-scope approval. Architect retains the verified label transition after Gherkin and before design. Codex must publish and verify its own artifacts or stop and report BLOCKED to Jarvis; no Jarvis artifact fallback. Material scope changes follow Edgar's approval or express feature-specific delegation. Jarvis marks completed only on Edgar's confirmation; required UI, merge, and deployment approvals remain. Earlier workflow entries below are historical and superseded on these points. Historical feature files, including FEAT-007 wherever already recorded, were not changed, nor were app code, monitors, actual GitHub issues, SQL, or migrations. No commit, push, PR, or merge was made.
+
+Verification: instruction consistency review and `git diff --check` passed. Standard build/test commands exited unsuccessfully without an actionable diagnostic; build with `-m:1` passed (0 warnings/errors). Tests with `-m:1` reached vstest but were aborted after its 90-second testhost connection timeout; no test PASS is claimed. Test verification is BLOCKED by the runner connection failure. The GitHub workflow itself was not exercised.
 
 ## Architect issue-label claim (2026-11-22)
 

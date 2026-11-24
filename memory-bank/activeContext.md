@@ -1,6 +1,12 @@
 # Active context
 
-Actualizado: 2026-11-22 (America/Denver).
+Actualizado: 2026-11-23 (America/Denver).
+
+## Approved scope launches the complete issue flow (2026-11-23)
+
+Edgar corrected the workflow instructions: Jarvis creates a Draft issue with only requested scope, obtains Edgar's approval of that exact scope, and marks ready. Codex then runs Analyst (tagged Gherkin) → Architect → Developer → Reviewer → QA without a second approval of in-scope Gherkin or new per-phase authorizations. After verified Gherkin, Architect verifies approved scope and requirements, then verifies ready → inprogress before design. Material scope changes require Edgar's approval unless expressly delegated for that feature. Codex authors, posts, and reads back its own artifacts; posting or verification failure stops the phase and is reported BLOCKED to Jarvis, which must not draft or publish those artifacts. Jarvis marks completed only after Edgar confirms completion. Required UI, merge, and deployment approvals remain. Historical records, including FEAT-007, remain prior evidence; earlier workflow notes below are history and are superseded where they conflict with this entry and [the current workflow](../features/README.md).
+
+This task changes instructions only on `feature/AgentGithubIssueIntegration`; no app code, monitors, actual issues, labels, or historical feature files were changed. Checkout and clean Git state were verified before editing. Verification results are recorded in progress.md; no end-to-end GitHub flow was exercised.
 
 ## First agent claim changes issue label (2026-11-22)
 
