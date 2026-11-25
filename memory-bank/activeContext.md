@@ -1,5 +1,33 @@
 # Active context
 
+La cabecera actual de Frentes abiertos muestra el título a la izquierda y el enlace de regreso a la derecha en una sola fila. Las tarjetas siguen inmediatamente debajo, sin contador.
+
+En Frentes abiertos se eliminó toda la cabecera, incluido el título. La región principal conserva su nombre accesible. Las tarjetas aparecen primero, con filas de altura natural y menos espacio interior en escritorio. El enlace de regreso está al pie.
+
+## Depuración local Private QA en VS Code — issue #17 (2026-11-25)
+
+Se agrega el perfil separado `RaceIT.ProjectManager (Private QA)` y una tarea de build serial para ese perfil. Seleccionarlo en Ejecutar y depurar antes de F5; usa únicamente loopback `127.0.0.1:5244`, entorno `PrivateQa`, selector sintético explícito y la instancia/base desechable `RaceIT_PM_SyntheticQA`, sin heredar `launchSettings.json`. El perfil Development original se conserva; sin Google configurado y fuera de `PrivateQa`, el acceso permanece cerrado por diseño. No se alteran reglas de autenticación, datos ni las ediciones manuales de `OpenFronts`. La configuración JSON se valida por separado; resultados de arranque/login y revisión de la UI exacta se registran en [#17](https://github.com/etiznado/projectManager/issues/17#issuecomment-7177019509).
+
+El arranque no publicado habilita `UseStaticWebAssets()` únicamente en `PrivateQa` para resolver los estilos aislados generados durante build; no se activa ese cargador adicional en otros entornos. Corrección y evidencia de runtime en [#17](https://github.com/etiznado/projectManager/issues/17#issuecomment-7177141561).
+
+## Simplificación visual de Frentes abiertos (2026-11-25)
+
+Acceso: añadido «Frentes abiertos» al menú principal, junto a «Mi semana», para las sesiones autenticadas. Apunta a `/frentes-abiertos`. Build con salida separada sin errores/advertencias y 97/97 pruebas; navegación visual pendiente.
+
+Seguimiento: por solicitud de Edgar se elimina el mensaje «Estado de … guardado: …» después de cambiar un estado. Se conservan la actualización de la ficha y los avisos de error. Build con salida separada sin errores/advertencias y 97/97 pruebas; sin nueva verificación visual.
+
+Por solicitud directa de Edgar se retiran la marca «RaceIT · Vista personal» y el rombo, el subtítulo y los filtros de `OpenFronts`. La lista y su contador usan siempre todos los frentes personales cargados. Se oculta el contorno del foco de navegación únicamente en el título; los controles conservan su foco visible. Los botones de cambio de estado son más pequeños (12 px, altura mínima 28 px), con opciones no seleccionadas en gris y la activa en su color; siguen siendo pulsables y guardan mediante el servicio existente. Build con `-m:1` sin errores/advertencias y 97/97 pruebas fuera del sandbox; revisión visual de esta versión pendiente.
+
+## Ajuste de controles de estado — issue #17 (2026-11-25)
+
+Por solicitud directa de Edgar, el selector y Guardar se sustituyen por tres etiquetas de color: pulsar una guarda inmediatamente ese estado mediante el mismo servicio SQL. La etiqueta activa refleja solo el estado confirmado, las operaciones en curso bloquean pulsaciones repetidas y se conserva el reintento/recarga ante errores o concurrencia. Sin cambios de modelo, autenticación, API ni Mi semana. Build sin errores/advertencias. La autorización, el handoff y los resultados de revisión/navegador de esta nueva versión se registran en [#17](https://github.com/etiznado/projectManager/issues/17#issuecomment-7176416403); Edgar conserva la aceptación de la UI exacta.
+
+## Frentes abiertos persistidos — issue #17 (2026-11-25)
+
+Implementación local en `codex/feat-005-frentes-abiertos`, con FEAT-005 conservado como antecedente de evaluación. Se recuperaron composición, layout y CSS de la demo Blazor de cuatro columnas; `/frentes-abiertos` ahora lee frentes personales de SQL mediante `OpenFrontService` y permite guardar el estado desde cada ficha. Solo se muestran/actualizan frentes del propietario activo, incluso para Administrador. Estados: En curso, Necesita decisión y En espera. Último avance y siguiente paso se conservan al cambiar estado; la revisión de concurrencia rechaza ediciones obsoletas. Tabla `OpenFronts` independiente de actividades/planificación, migración aditiva y sin semilla de frentes reales o ficticios en la base habitual. Sin cambios en Mi semana, autenticación ni API de Jarvis; FEAT-016 podrá reutilizar el servicio. Requisitos y diseño autorizados en comentarios de [#17](https://github.com/etiznado/projectManager/issues/17); la carga inicial real/CRUD sigue fuera del alcance. Verificación SQL desechable y visual a cargo del coordinador/QA; aceptación de UI de Edgar pendiente. No se ha aplicado esta migración a la base del dueño ni hay push/PR/despliegue.
+
+Verificación posterior del coordinador (2026-11-25): migraciones aplicadas solo a una instancia/base LocalDB desechable nueva `RaceIT_PM_SyntheticQA`, con archivos nuevos y datos sintéticos. Persistencia comprobada con el servicio y un contexto nuevo, y desde navegador al salir/reabrir la vista. Comprobados aislamiento entre dos administradores, filtros/vacío, rechazo real de SQL con reintento y conflicto entre dos pestañas con recarga. La planificación mantuvo su huella antes/después. Cuatro columnas verificadas a 1920×1080 y una columna sin desbordamiento horizontal a 390×844; cinco fichas con los controles de edición requieren desplazamiento vertical. Preview exclusivamente loopback en `http://127.0.0.1:5243/frentes-abiertos`, sin autorización de publicación. La revisión de UI de Edgar sigue pendiente; no se tocó la base habitual. Evidencia final de QA y decisiones en #17.
+
 Actualizado: 2026-11-23 (America/Denver).
 
 ## Approved scope launches the complete issue flow (2026-11-23)

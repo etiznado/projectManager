@@ -21,6 +21,7 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
     public DbSet<GoogleIdentityLink> GoogleIdentityLinks => Set<GoogleIdentityLink>();
     public DbSet<GoogleInvitation> GoogleInvitations => Set<GoogleInvitation>();
     public DbSet<AuthenticationAuditEvent> AuthenticationAuditEvents => Set<AuthenticationAuditEvent>();
+    public DbSet<OpenFront> OpenFronts => Set<OpenFront>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -40,6 +41,13 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
         model.Entity<GoogleIdentityLink>().HasIndex(x => new { x.Issuer, x.Subject }).IsUnique();
         model.Entity<GoogleIdentityLink>().HasIndex(x => x.PersonId).IsUnique();
         model.Entity<GoogleInvitation>().HasIndex(x => x.TokenHash).IsUnique();
+        model.Entity<OpenFront>().HasIndex(x => x.PersonId);
+        model.Entity<OpenFront>().Property(x => x.Revision).IsConcurrencyToken();
+        model.Entity<OpenFront>().ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_OpenFront_Status", "[Status] >= 0 AND [Status] <= 2");
+            t.HasCheckConstraint("CK_OpenFront_Revision", "[Revision] >= 0");
+        });
 
         model.Entity<PersonWorkday>().ToTable(t =>
         {
@@ -92,5 +100,7 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
         model.Entity<GoogleIdentityLink>().Property(x => x.Subject).HasMaxLength(255);
         model.Entity<GoogleInvitation>().Property(x => x.ExpectedEmail).HasMaxLength(320);
         model.Entity<GoogleInvitation>().Property(x => x.ExpectedSubject).HasMaxLength(255);
+        model.Entity<OpenFront>().Property(x => x.LastAdvance).HasMaxLength(2000);
+        model.Entity<OpenFront>().Property(x => x.NextStep).HasMaxLength(2000);
     }
 }

@@ -1,5 +1,25 @@
 # Progress
 
+Frentes abiertos abre directamente en la cuadrícula. Se compactaron las tarjetas para aprovechar dos filas en escritorio. Compilación correcta y 97/97 pruebas aprobadas. La cantidad de filas completas depende del texto y del tamaño de ventana, y queda pendiente comprobarla visualmente.
+
+## Perfil local Private QA de VS Code — issue #17 (2026-11-25)
+
+Añadido un perfil `coreclr` dedicado a la base sintética autorizada, con `launchSettingsProfile: null`, ambos entornos explícitos en `PrivateQa`, flags del selector y bind a `127.0.0.1:5244`. Una tarea propia usa `-m:1`, conservando perfil y tarea originales. Verificación estática de JSON, restricciones de destino y conservación de las ediciones manuales; no se ejecuta F5 ni se cambia SQL/autenticación en esta modificación. Evidencia de runtime/QA en el [issue #17](https://github.com/etiznado/projectManager/issues/17).
+
+## Simplificación visual de Frentes abiertos (2026-11-25)
+
+Acceso solicitado por Edgar: enlace «Frentes abiertos» en `MainLayout.razor`, visible en el menú autenticado y dirigido a `/frentes-abiertos`. Build con `-m:1 -p:OutputPath=bin/verification/`: 0 errores/advertencias; suite con la misma salida: 97/97 fuera del sandbox. Sin nueva ejecución de app ni prueba de navegador.
+
+Seguimiento: eliminado el mensaje de confirmación de guardado de estado, conservando errores y actualización del estado confirmado. Build con `-m:1 -p:OutputPath=bin/verification/`: 0 errores/advertencias; 97/97 pruebas con esa salida, fuera del sandbox. La salida normal estaba bloqueada por la app en ejecución y `BaseOutputPath` incluyó un JS de una publicación anterior (BLAZOR106); `OutputPath` permitió verificar sin detener la app. Sin nueva prueba de navegador.
+
+Aplicados los ajustes pedidos por Edgar en `OpenFronts.razor` y su CSS: encabezado sin marca/rombo ni subtítulo, sin filtros y con todos los frentes personales, título sin contorno al recibir el foco de navegación y botones de estado compactos con opciones no seleccionadas grises. Verificado el CSS aislado generado, incluido el tamaño de fuente y el color del estado seleccionado. `dotnet build RaceIT.ProjectManager.sln -m:1`: 0 errores/advertencias; el comando sin `-m:1` falló sin diagnóstico útil. `dotnet test RaceIT.ProjectManager.sln -m:1 --no-build`: 97/97 fuera del sandbox, tras abortar dentro por timeout de conexión a testhost. `git diff --check` correcto. Sin ejecución de app ni verificación visual de esta versión.
+
+## Frentes abiertos persistidos — issue #17 (2026-11-25)
+
+Preparado localmente el guardado SQL de frentes personales y el cambio de estado inline, reutilizando la demo Blazor de cuatro columnas. Servicio separado con validación de propietario activo, estados permitidos y revisión de concurrencia; migración `OpenFronts` solo agrega tabla, índice y restricciones. Sin catálogo fijo, cambios en Mi semana, API de Jarvis ni datos reales. Build final sin errores/advertencias, suite completa 97/97 correcta fuera del sandbox y comprobación EF offline sin diferencias pendientes de modelo. La primera ejecución de pruebas en sandbox abortó por conexión a testhost a los 90 s. Seis pruebas nuevas cubren propiedad, persistencia con contexto nuevo, planificación intacta, identidad inactiva/no confiable, estados/revisión inválidos y rechazo de guardado con reintento. Handoffs y revisión independiente en el [issue #17](https://github.com/etiznado/projectManager/issues/17). SQL desechable, navegador y aceptación de UI pendientes de los roles correspondientes. El expediente histórico FEAT-005 permanece intacto; sin migración en base habitual, push, PR o despliegue.
+
+Verificación posterior del coordinador (2026-11-25): servicio real con proveedor SQL Server en base desechable nueva pasó guardado y lectura con contexto nuevo, rechazo de propietario ajeno/estado inválido/revisión antigua y planificación intacta. En navegador se verificaron guardado, reapertura, cuatro columnas a 1920 px, adaptación a 390 px, filtros/vacío, error de SQL con borrador y filtro conservados, reintento y conflicto entre pestañas. La restricción temporal de prueba fue retirada. El hash de planificación se conservó. Un primer empaquetado tomó una salida Release antigua; se detuvo ese preview y se republicó explícitamente Debug, cotejando su DLL con el build revisado antes de probar UI. Un MDF preexistente impidió la creación con ruta predeterminada; no se reutilizó ni modificó, y se crearon archivos nuevos para esta base. QA independiente repitió build sin errores/advertencias y 97/97 pruebas; aceptación visual de Edgar pendiente. Con cinco fichas y controles hay desplazamiento vertical a 1080p. Sin cambios de código posteriores a Reviewer; solo se añaden estas notas de evidencia. Registro canónico y resultados por rol en #17.
+
 Actualizado: 2026-11-23.
 
 ## Scope approval and Codex artifact ownership (2026-11-23)

@@ -9,6 +9,10 @@ using RaceIT.ProjectManager.Domain;
 using RaceIT.ProjectManager.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsEnvironment("PrivateQa"))
+{
+    builder.WebHost.UseStaticWebAssets();
+}
 var googleEnabled = builder.Configuration.GetValue<bool>("Authentication:Google:Enabled") &&
     !string.IsNullOrWhiteSpace(builder.Configuration["Authentication:Google:ClientId"]) &&
     !string.IsNullOrWhiteSpace(builder.Configuration["Authentication:Google:ClientSecret"]);
@@ -101,6 +105,7 @@ builder.Services.AddScoped<WorkRecordService>();
 builder.Services.AddScoped<WeeklyPlanService>();
 builder.Services.AddScoped<PanoramaService>();
 builder.Services.AddScoped<TemplateService>();
+builder.Services.AddScoped<OpenFrontService>();
 
 var app = builder.Build();
 
