@@ -8,6 +8,14 @@
       "args": ["build", "${workspaceFolder}/src/RaceIT.ProjectManager/RaceIT.ProjectManager.csproj", "--configuration", "Debug"],
       "problemMatcher": "$msCompile",
       "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "build RaceIT.ProjectManager (Private QA)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/src/RaceIT.ProjectManager/RaceIT.ProjectManager.csproj", "--configuration", "Debug", "-m:1"],
+      "problemMatcher": "$msCompile",
+      "group": "build"
     }
   ]
 }

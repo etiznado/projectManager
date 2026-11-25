@@ -20,6 +20,32 @@
         "action": "openExternally",
         "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
       }
+    },
+    {
+      "name": "RaceIT.ProjectManager (Private QA)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build RaceIT.ProjectManager (Private QA)",
+      "program": "${workspaceFolder}/src/RaceIT.ProjectManager/bin/Debug/net10.0/RaceIT.ProjectManager.dll",
+      "args": ["--urls", "http://127.0.0.1:5244"],
+      "cwd": "${workspaceFolder}/src/RaceIT.ProjectManager",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "launchSettingsProfile": null,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "PrivateQa",
+        "DOTNET_ENVIRONMENT": "PrivateQa",
+        "ASPNETCORE_URLS": "http://127.0.0.1:5244",
+        "ConnectionStrings__ProjectManager": "Server=(localdb)\\RaceIT_PM_SyntheticQA;Database=RaceIT_PM_SyntheticQA;Integrated Security=True;Encrypt=True;TrustServerCertificate=True",
+        "Authentication__Selector__Enabled": "true",
+        "Authentication__Selector__SyntheticDataOnly": "true",
+        "Authentication__Google__Enabled": "false"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s/login"
+      }
     }
   ]
 }

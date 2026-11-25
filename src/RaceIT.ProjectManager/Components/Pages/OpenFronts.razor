@@ -1,0 +1,144 @@
+@page "/frentes-abiertos"
+@attribute [Authorize]
+@layout OpenFrontsLayout
+@inject OpenFrontService Service
+@inject WorkAccess Access
+@inject ILogger<OpenFronts> Logger
+
+<PageTitle>Frentes abiertos | RaceIT</PageTitle>
+
+<main class="fronts-board" aria-label="Frentes abiertos">
+    <header class="fronts-heading">
+        <h1>Frentes abiertos</h1>
+        <a class="fronts-return" href="/mi-semana">Volver a Project Manager</a>
+    </header>
+    @if (feedback is not null) { <p class="fronts-feedback" role="status">@feedback</p> }
+
+    @if (loadError is not null)
+    {
+        <div class="fronts-notice" role="alert"><p>@loadError</p><button class="fronts-filter" @onclick="LoadAsync">Reintentar</button></div>
+    }
+    else if (loading)
+    {
+        <p class="fronts-notice" role="status">Cargando tus frentes…</p>
+    }
+    else if (cards.Count == 0)
+    {
+        <p class="fronts-notice">Todavía no tienes frentes guardados.</p>
+    }
+    else
+    {
+        <section class="fronts-cards" aria-label="Mis frentes abiertos">
+            @foreach (var card in cards)
+            {
+                var front = card.Front;
+                <article class="fronts-card @OpenFrontPresentation.StatusClass(front.Status)" @key="front.Id">
+                    <div class="fronts-card-head">
+                        <p class="fronts-context">@(front.Context ?? "Frente independiente")</p>
+                        <span class="fronts-status">@OpenFrontPresentation.Label(front.Status)</span>
+                    </div>
+                    <h2>@front.Title</h2>
+                    <div class="fronts-detail">
+                        <span class="fronts-detail-label">Último avance</span>
+                        <p>@front.LastAdvance</p>
+                    </div>
+                    <div class="fronts-detail fronts-next">
+                        <span class="fronts-detail-label">Próximo paso</span>
+                        <p>@front.NextStep</p>
+                    </div>
+                    <div class="fronts-edit">
+                        <div class="fronts-state-labels" role="group" aria-label="Cambiar estado de @front.Title">
+                            @foreach (var status in Enum.GetValues<OpenFrontStatus>())
+                            {
+                                <button type="button" class="fronts-state-label @OpenFrontPresentation.StatusClass(status)"
+                                        aria-pressed="@(front.Status == status ? "true" : "false")" disabled="@(card.Saving || card.Conflict)"
+                                        @onclick="() => SaveAsync(card, status)">
+                                    @if (front.Status == status) { <span aria-hidden="true">✓</span> }
+                                    @OpenFrontPresentation.Label(status)
+                                </button>
+                            }
+                        </div>
+                        @if (card.Saving) { <span class="fronts-saving" role="status">Guardando…</span> }
+                        @if (card.Error is not null) { <p class="fronts-error" role="alert">@card.Error</p> }
+                        @if (card.Conflict)
+                        {
+                            <button type="button" class="fronts-filter" disabled="@card.Saving" @onclick="() => ReloadAsync(card)">Recargar ficha</button>
+                        }
+                    </div>
+                </article>
+            }
+        </section>
+    }
+
+</main>
+
+@code {
+    private List<CardEdit> cards = [];
+    private bool loading = true;
+    private string? loadError;
+    private string? feedback;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadError = null;
+        try { cards = (await Service.ListAsync(await Access.UserAsync())).Select(x => new CardEdit(x)).ToList(); }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Unable to load personal fronts.");
+            cards = [];
+            loadError = "No se pudieron cargar tus frentes. Vuelve a intentarlo.";
+        }
+        finally { loading = false; }
+    }
+
+    private async Task SaveAsync(CardEdit card, OpenFrontStatus status)
+    {
+        if (card.Saving || card.Conflict || status == card.Front.Status) return;
+        card.Saving = true;
+        card.Error = null;
+        feedback = null;
+        try
+        {
+            var saved = await Service.ChangeStatusAsync(await Access.UserAsync(), card.Front.Id, status, card.Front.Revision);
+            card.Front = saved;
+        }
+        catch (OpenFrontConflictException ex) { card.Error = ex.Message; card.Conflict = true; }
+        catch (ArgumentException) { card.Error = "No se pudo aplicar ese estado. Vuelve a intentarlo."; }
+        catch (UnauthorizedAccessException) { card.Error = "No tienes acceso a este frente. Vuelve a iniciar sesión."; }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Unable to save front {FrontId}.", card.Front.Id);
+            card.Error = "No se pudo guardar el cambio. Vuelve a intentarlo.";
+        }
+        finally { card.Saving = false; }
+    }
+
+    private async Task ReloadAsync(CardEdit card)
+    {
+        if (card.Saving) return;
+        card.Saving = true;
+        try
+        {
+            var fresh = (await Service.ListAsync(await Access.UserAsync())).SingleOrDefault(x => x.Id == card.Front.Id);
+            if (fresh is null) { cards.Remove(card); feedback = "El frente ya no está disponible."; }
+            else { card.Front = fresh; card.Error = null; card.Conflict = false; }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Unable to reload front {FrontId}.", card.Front.Id);
+            card.Error = "No se pudo recargar la ficha. Vuelve a intentarlo.";
+        }
+        finally { card.Saving = false; }
+    }
+
+    private sealed class CardEdit(OpenFront front)
+    {
+        public OpenFront Front { get; set; } = front;
+        public bool Saving { get; set; }
+        public bool Conflict { get; set; }
+        public string? Error { get; set; }
+    }
+}
