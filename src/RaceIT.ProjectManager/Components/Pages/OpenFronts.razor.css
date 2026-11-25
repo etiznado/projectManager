@@ -16,7 +16,7 @@
     display: grid;
     align-content: start;
     gap: clamp(22px, 2vw, 34px);
-    background: radial-gradient(circle at 95% 0%, #193248 0, #0a1018 42%);
+    background: var(--dark-page-background);
 }
 .fronts-unavailable { min-height: 100svh; padding: 48px; }
 

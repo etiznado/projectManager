@@ -2,6 +2,12 @@
 
 Frentes abiertos abre directamente en la cuadrícula. Se compactaron las tarjetas para aprovechar dos filas en escritorio. Compilación correcta y 97/97 pruebas aprobadas. La cantidad de filas completas depende del texto y del tamaño de ventana, y queda pendiente comprobarla visualmente.
 
+## Fondo degradado y modo oscuro por defecto (2026-11-25)
+
+Selector según referencia visual: `MainLayout` usa una cápsula de 126×50 px con sombras interiores, perilla circular a la izquierda en claro/derecha en oscuro, iconos SVG y etiqueta del modo actual en español. Estilos aislados en `MainLayout.razor.css`, retiradas las reglas globales del botón anterior. Semántica `role="switch"`, `aria-checked`, foco visible y movimiento reducido. Build con `-m:1 -p:OutputPath=bin/verification/`: 0 errores/advertencias; 97/97 pruebas con la misma salida fuera del sandbox. Sin nueva prueba de navegador.
+
+Aplicado el degradado radial de Frentes abiertos al fondo del modo oscuro de todo el sitio, compartiendo la variable CSS con esa página. `ThemeState` y la paleta inicial arrancan en oscuro; el modo claro conserva sus colores y fondo sólido mediante la clase `theme-light` del layout. El login también usa el oscuro por defecto. Actualizada la prueba existente de tema para comprobar oscuro inicial, alternancia en ambos sentidos e independencia de una nueva instancia. Build con `-m:1 -p:OutputPath=bin/verification/`: 0 errores/advertencias. Suite con la misma salida, fuera del sandbox: 97/97. Sin arranque de app ni revisión visual de esta versión.
+
 ## Perfil local Private QA de VS Code — issue #17 (2026-11-25)
 
 Añadido un perfil `coreclr` dedicado a la base sintética autorizada, con `launchSettingsProfile: null`, ambos entornos explícitos en `PrivateQa`, flags del selector y bind a `127.0.0.1:5244`. Una tarea propia usa `-m:1`, conservando perfil y tarea originales. Verificación estática de JSON, restricciones de destino y conservación de las ediciones manuales; no se ejecuta F5 ni se cambia SQL/autenticación en esta modificación. Evidencia de runtime/QA en el [issue #17](https://github.com/etiznado/projectManager/issues/17).

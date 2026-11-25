@@ -2,7 +2,13 @@
 
 La cabecera actual de Frentes abiertos muestra el título a la izquierda y el enlace de regreso a la derecha en una sola fila. Las tarjetas siguen inmediatamente debajo, sin contador.
 
-En Frentes abiertos se eliminó toda la cabecera, incluido el título. La región principal conserva su nombre accesible. Las tarjetas aparecen primero, con filas de altura natural y menos espacio interior en escritorio. El enlace de regreso está al pie.
+El foco de navegación en los títulos ya no dibuja un marco en ninguna página. En Frentes abiertos se eliminó toda la cabecera, incluido el título. La región principal conserva su nombre accesible. Las tarjetas aparecen primero, con filas de altura natural y menos espacio interior en escritorio. El enlace de regreso está al pie.
+
+## Fondo degradado y modo oscuro por defecto (2026-11-25)
+
+Selector visual: por referencia de Edgar, el botón pasa a una cápsula con relieve, perilla deslizante y SVG de sol/luna; muestra «Modo claro» o «Modo oscuro». Mantiene `Theme.Toggle`, oscuro por defecto, teclado y semántica accesible de switch; animación desactivada con movimiento reducido. Build sin errores/advertencias y 97/97 pruebas; revisión visual de este selector pendiente.
+
+Por solicitud directa de Edgar, `ThemeState` inicia en oscuro y la paleta CSS predeterminada también es oscura, incluida la pantalla de acceso. El fondo general reutiliza el degradado radial de Frentes abiertos mediante `--dark-page-background`; cubre la ventana y permanece fijo al desplazar. El botón «Modo oscuro» conserva el cambio a claro, cuya paleta se activa desde una clase en el contenido del layout, sin depender de un encabezado autenticado. La preferencia sigue siendo por circuito, sin persistencia nueva. Build sin errores/advertencias y 97/97 pruebas, incluida la prueba actualizada del estado inicial y la alternancia; revisión visual pendiente.
 
 ## Depuración local Private QA en VS Code — issue #17 (2026-11-25)
 

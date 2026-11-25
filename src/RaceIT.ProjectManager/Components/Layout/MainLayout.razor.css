@@ -1,3 +1,77 @@
+.theme-toggle {
+    zoom: 0.5;
+    position: relative;
+    flex: 0 0 auto;
+    width: 126px;
+    height: 50px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #d7dce4;
+    border-radius: 999px;
+    background: linear-gradient(145deg, #c6ccd5, #e1e5eb);
+    color: #657080;
+    box-shadow: inset 3px 4px 7px #7f899780, inset -2px -3px 5px #ffffff,
+                0 1px 2px #ffffffb3;
+    transition: background .2s ease, box-shadow .2s ease, color .2s ease;
+}
+
+.theme-toggle-copy {
+    position: absolute;
+    inset: 0 8px 0 51px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.05;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+}
+
+.theme-toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #ffffff;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #ffffff, #e2e6ed);
+    color: #8792a1;
+    box-shadow: 2px 3px 5px #69738280, inset 1px 1px 2px #ffffff;
+    transition: transform .22s ease, background .2s ease, color .2s ease;
+}
+
+.theme-toggle-icon { width: 29px; height: 29px; }
+
+.theme-toggle[aria-checked="true"] {
+    border-color: #343c50;
+    background: linear-gradient(145deg, #1b2030, #2d3447);
+    color: #b1b8cc;
+    box-shadow: inset 3px 4px 7px #080b15cc, inset -2px -3px 5px #636e8359,
+                0 1px 2px #8791a259;
+}
+
+.theme-toggle[aria-checked="true"] .theme-toggle-copy { left: 8px; right: 51px; }
+
+.theme-toggle[aria-checked="true"] .theme-toggle-thumb {
+    transform: translateX(76px);
+    border-color: #8f99b0;
+    background: linear-gradient(145deg, #8893ac, #626d87);
+    color: #e2e7f1;
+    box-shadow: 2px 3px 5px #080b15b3, inset 1px 1px 2px #c3cad680;
+}
+
+.theme-toggle:hover .theme-toggle-thumb { filter: brightness(1.08); }
+.theme-toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-toggle, .theme-toggle-thumb { transition: none; }
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
