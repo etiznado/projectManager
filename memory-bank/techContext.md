@@ -1,5 +1,9 @@
 # Tech context
 
+## FEAT-003: configuración aislada
+
+`Authentication:Google:Enabled` y `Authentication:Google:ClientId`/`ClientSecret` habilitan Google; los valores reales se proporcionan fuera del repositorio. `Authentication:Selector:Enabled` y `Authentication:Selector:SyntheticDataOnly` solo habilitan el selector con entorno `PrivateQa`, cliente loopback y cadena SQL Server que apunte exactamente a la instancia `(localdb)\RaceIT_PM_SyntheticQA` y base `RaceIT_PM_SyntheticQA`. La instancia, la base y los datos ficticios del canario se crearon bajo autorización separada; no son la base del dueño. Sin configuración ambos accesos quedan cerrados. La migración `GoogleAccess` se aplicó solo a ese canario; no ejecutar `database update` contra la base del dueño en esta fase. El bootstrap privado de operador usa `--issue-bootstrap-invitation` y las variables `RACEIT_BOOTSTRAP_PERSON_ID`, `RACEIT_BOOTSTRAP_EMAIL`, `RACEIT_BOOTSTRAP_ISSUER`, `RACEIT_BOOTSTRAP_SUBJECT`, `RACEIT_BOOTSTRAP_EXPIRES_UTC` con expiración UTC; no se ha ejecutado con identidad real.
+
 ## Stack comprobado
 
 - SDK .NET 10.0.402; target net10.0.

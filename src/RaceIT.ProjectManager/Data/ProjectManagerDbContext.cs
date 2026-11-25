@@ -18,6 +18,9 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
     public DbSet<Template> Templates => Set<Template>();
     public DbSet<TemplateItem> TemplateItems => Set<TemplateItem>();
     public DbSet<Continuation> Continuations => Set<Continuation>();
+    public DbSet<GoogleIdentityLink> GoogleIdentityLinks => Set<GoogleIdentityLink>();
+    public DbSet<GoogleInvitation> GoogleInvitations => Set<GoogleInvitation>();
+    public DbSet<AuthenticationAuditEvent> AuthenticationAuditEvents => Set<AuthenticationAuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -34,6 +37,9 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
             .HasOne(x => x.ToActivity).WithMany(a => a.ContinuationsTo).HasForeignKey(x => x.ToActivityId);
 
         model.Entity<WeeklyPlan>().HasIndex(x => new { x.PersonId, x.WeekStart }).IsUnique();
+        model.Entity<GoogleIdentityLink>().HasIndex(x => new { x.Issuer, x.Subject }).IsUnique();
+        model.Entity<GoogleIdentityLink>().HasIndex(x => x.PersonId).IsUnique();
+        model.Entity<GoogleInvitation>().HasIndex(x => x.TokenHash).IsUnique();
 
         model.Entity<PersonWorkday>().ToTable(t =>
         {
@@ -83,5 +89,8 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
             foreach (var foreignKey in entity.GetForeignKeys())
                 foreignKey.DeleteBehavior = DeleteBehavior.NoAction;
         }
+        model.Entity<GoogleIdentityLink>().Property(x => x.Subject).HasMaxLength(255);
+        model.Entity<GoogleInvitation>().Property(x => x.ExpectedEmail).HasMaxLength(320);
+        model.Entity<GoogleInvitation>().Property(x => x.ExpectedSubject).HasMaxLength(255);
     }
 }

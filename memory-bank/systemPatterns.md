@@ -1,5 +1,9 @@
 # System patterns
 
+## FEAT-003: identidad Google e invitaciones (worktree aislado)
+
+`Program.cs` configura Google OAuth con UserInfo OIDC (`sub`, `email_verified`) y cookie externa temporal; solo crea la cookie local para una Persona activa vinculada por `issuer`/`sub`, o tras aceptar una invitación privada válida. `GoogleAccessService` guarda invitaciones con hash de token y vínculo único por Persona y por emisor/sujeto. Consumo y vínculo se guardan juntos en transacción serializable; la base agrega índices únicos. La cookie local incluye `auth_source`; la emisión exige origen Google y Administrador activo vigente. Bootstrap usa comando de operador sin endpoint público de emisión. El selector requiere `PrivateQa`, habilitación explícita, marca de datos sintéticos y loopback tanto en UI como POST. `DataSeeder` no corre al arrancar. Esta migración no se aplicó a SQL.
+
 ## Sesión provisional y permisos
 
 `Program.cs` configura cookies, autorización y estado de autenticación en Blazor. `/session/login` y `/session/logout` son POST con antiforgery; el login acepta un `PersonId` existente y activo (sin contraseña). Claims: NameIdentifier, PersonId, Name y Role (Administrador/Usuario). `WorkAccess` centraliza IsAdmin/PersonId/RequireOwn/RequireAdmin y expone métodos estáticos puros para pruebas. Login real y modelo de cuentas siguen pendientes.
