@@ -1,12 +1,27 @@
 @page "/login"
 @attribute [AllowAnonymous]
 @inject PersonService PersonService
+@inject IConfiguration Configuration
+@inject IWebHostEnvironment Environment
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
 
-<PageTitle>Seleccionar usuario | RaceIT</PageTitle>
+<PageTitle>Iniciar sesión | RaceIT</PageTitle>
 <section class="panel">
-    <h1>Seleccionar usuario</h1>
-    <p class="muted">Acceso provisional sin contraseña para desarrollo local.</p>
+    <h1>Iniciar sesión</h1>
     @if (error is not null) { <p role="alert">@error</p> }
+    @if (googleEnabled)
+    {
+        <p><a class="button" href="/auth/google/start">Continuar con Google</a></p>
+        <form method="post" action="/auth/google/accept" data-enhance="false">
+            <AntiforgeryToken />
+            <label>Invitación privada <input name="invitation" autocomplete="off" required /></label>
+            <button type="submit">Aceptar invitación con Google</button>
+        </form>
+    }
+    @if (selectorEnabled)
+    {
+    <p class="muted">Selector de prueba privada con datos ficticios.</p>
     <form method="post" action="/session/login" data-enhance="false">
         <AntiforgeryToken />
         <label>Usuario
@@ -20,14 +35,29 @@
         </label>
         <button type="submit">Entrar</button>
     </form>
+    }
+    @if (!googleEnabled && !selectorEnabled) { <p role="alert">No hay un método de acceso habilitado.</p> }
 </section>
 
 @code {
     private List<Person> people = [];
     private string? error;
+    private bool googleEnabled;
+    private bool selectorEnabled;
 
     protected override async Task OnInitializedAsync()
     {
+        googleEnabled = Configuration.GetValue<bool>("Authentication:Google:Enabled") &&
+            !string.IsNullOrWhiteSpace(Configuration["Authentication:Google:ClientId"]) &&
+            !string.IsNullOrWhiteSpace(Configuration["Authentication:Google:ClientSecret"]);
+        if (Navigation.ToAbsoluteUri(Navigation.Uri).Query.Contains("google=failed", StringComparison.Ordinal))
+            error = "No se pudo iniciar sesión con Google. Comprueba la invitación o intenta de nuevo.";
+        selectorEnabled = AuthenticationGate.SelectorEnabled(Environment.IsEnvironment("PrivateQa"),
+            Configuration.GetValue<bool>("Authentication:Selector:Enabled"),
+            Configuration.GetValue<bool>("Authentication:Selector:SyntheticDataOnly"),
+            HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress,
+            Configuration.GetConnectionString("ProjectManager"));
+        if (!selectorEnabled) return;
         try
         {
             people = await PersonService.ListForLoginAsync();

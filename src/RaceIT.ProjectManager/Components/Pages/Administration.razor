@@ -4,6 +4,8 @@
 @inject ProjectService Projects
 @inject ActivityService Activities
 @inject TemplateService Templates
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IConfiguration Configuration
 
 <PageTitle>Administración | RaceIT</PageTitle>
 <h1>Administración</h1>
@@ -29,6 +31,25 @@
         <li>@person.Name · @(person.Role == PersonRole.Admin ? "Administrador" : "Usuario") · @person.WeeklyCapacityHours.ToString("0.##") h/sem <button type="button" class="secondary project-edit" @onclick="() => EditPerson(person)">Editar</button></li>
     }
     </ul>
+    @if (canIssueGoogleInvitation)
+    {
+        <h3>Invitación privada de Google</h3>
+        <p class="muted">Elige una persona activa existente. La invitación se muestra una vez al emitirla.</p>
+        <form method="post" action="/auth/invitations" data-enhance="false">
+            <AntiforgeryToken />
+            <label>Persona
+                <select name="personId" required>
+                    @foreach (var person in people.Where(x => x.IsActive))
+                    {
+                        <option value="@person.Id">@person.Name</option>
+                    }
+                </select>
+            </label>
+            <label>Correo Google previsto <input type="email" name="email" required /></label>
+            <label>Vence (fecha y hora UTC en formato ISO 8601) <input name="expiresUtc" placeholder="2026-11-22T20:00:00Z" required /></label>
+            <button type="submit">Emitir invitación</button>
+        </form>
+    }
 </section>
 }
 
@@ -140,6 +161,7 @@
 
 @code {
     private enum AdminSection { People, Initiatives, Projects, Activities, Templates }
+    private bool canIssueGoogleInvitation;
     private AdminSection section = AdminSection.Projects;
     private List<Person> people = [];
     private Person? editingPerson;
@@ -189,7 +211,13 @@
         }
     }
 
-    protected override async Task OnInitializedAsync() => await Load();
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        canIssueGoogleInvitation = Configuration.GetValue<bool>("Authentication:Google:Enabled") &&
+            user.FindFirst("auth_source")?.Value == "google";
+        await Load();
+    }
 
     private async Task Load()
     {

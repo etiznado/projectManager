@@ -18,6 +18,40 @@ public sealed class Person
     public ICollection<PersonWorkday> Workdays { get; set; } = new List<PersonWorkday>();
 }
 
+public sealed class GoogleIdentityLink
+{
+    public int Id { get; set; }
+    public int PersonId { get; set; }
+    public Person Person { get; set; } = null!;
+    public string Issuer { get; set; } = "";
+    public string Subject { get; set; } = "";
+    public DateTimeOffset CreatedAtUtc { get; set; }
+}
+
+public sealed class GoogleInvitation
+{
+    public int Id { get; set; }
+    public int PersonId { get; set; }
+    public Person Person { get; set; } = null!;
+    public string ExpectedEmail { get; set; } = "";
+    public string? ExpectedIssuer { get; set; }
+    public string? ExpectedSubject { get; set; }
+    public string TokenHash { get; set; } = "";
+    public DateTimeOffset ExpiresAtUtc { get; set; }
+    public DateTimeOffset? ConsumedAtUtc { get; set; }
+    public bool IsBootstrap { get; set; }
+    public int? IssuedByPersonId { get; set; }
+    public DateTimeOffset IssuedAtUtc { get; set; }
+}
+
+public sealed class AuthenticationAuditEvent
+{
+    public long Id { get; set; }
+    public string Action { get; set; } = "";
+    public int? PersonId { get; set; }
+    public DateTimeOffset AtUtc { get; set; }
+}
+
 public sealed class PersonWorkday
 {
     public int PersonId { get; set; }
