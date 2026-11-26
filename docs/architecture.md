@@ -26,10 +26,13 @@ Claves e invariantes de persistencia:
 | Sesiones, captura manual y terminación | `WorkRecordService.cs` |
 | Semana y bloques | `WeeklyPlanService.cs` |
 | Panorama y riesgo | `PanoramaService.cs`, `RiskCalculator.cs` |
+| Entregas de iniciativas | `InitiativeDeliveryService.cs`, `InitiativeDeliveryRules.cs` |
 | Plantillas y generación | `TemplateService.cs`, `TemplateRules.cs` |
 | Reglas de esfuerzo, distribución y formularios | `PlanningRules.cs`, `WeekLayoutCalculator.cs`, `PoolGrouping.cs`, `PlanningInputs.cs` |
 
 Las reglas puras se prueban sin SQL. `PlanningRules.RemainingHours` resta tiempo registrado de estimación y `NeedsReestimate` identifica una actividad abierta sin esfuerzo pendiente. La terminación es explícita. El cálculo de riesgo usa una bolsa compartida de capacidad; consultar el código y las pruebas para su fórmula efectiva, sin asumir un motor completo de reprogramación por todas las fechas.
+
+`InitiativeDeliveryService` alimenta Initiatives con proyectos y actividades de la persona autenticada, incluso para administradores. Agrupa por ID de iniciativa y respeta los cierres explícitos de `JarvisPlanningState`. `InitiativeDeliveryRules` determina trabajo iniciado abierto, desvíos calendario y estado de entrega; no recalcula fechas desde esfuerzo. `Project.TargetDate` conserva el compromiso y `Project.EstimatedDate` es una fecha manual opcional independiente. `ProjectService.UpdateEstimatedDateAsync` y `UpdateAgreedDateAsync` validan sesión activa y propiedad o administración y escriben exclusivamente la fecha seleccionada. La edición general de proyecto conserva la estimación; los contratos de la API privada no se amplían. La columna estimada requiere su migración específica antes de ejecutar la nueva revisión contra una base; la existencia de sus archivos no implica aplicación autorizada. Los valores de ambas fechas abren un modal común que conserva contexto y devuelve el foco al control exacto de apertura. El módulo JS de Initiatives mide una referencia oculta e inerte de dos proyectos para el detalle individual, y gestiona el clic nativo y el evento `fullscreenchange` sin modificar el módulo de pantalla completa de otras vistas.
 
 ## Identidad y permisos
 

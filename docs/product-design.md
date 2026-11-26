@@ -102,6 +102,16 @@ Es el detalle de la actividad seleccionada, no una lista de actividades terminad
 
 ## Panorama personal y alertas
 
+### Seguimiento de entregas en Initiatives
+
+Initiatives muestra un carrusel compacto y el detalle de la iniciativa seleccionada, sin repetir su título ni agregar contadores de WIP/avance. El conteo corresponde a iniciativas con al menos un proyecto visible en marcha; proyectos independientes no crean una iniciativa ficticia. Se conserva la selección al refrescar. Las actividades aparecen en línea con salto de renglón, terminadas en verde y pendientes neutras, sin casillas. Cuando el detalle tiene un solo proyecto, mantiene como altura mínima la referencia de dos proyectos al mismo ancho y puede crecer con su contenido. El control de pantalla completa muestra únicamente un icono, alterna entrada/salida y se sincroniza también al salir con Escape.
+
+Para esta vista, un proyecto está en marcha si conserva alguna actividad sin terminar y existe evidencia de inicio: actividad iniciada, alguna terminada o trabajo positivo registrado. Se excluyen proyectos vacíos, pendientes sin iniciar, todos completados y cierres explícitos de proyecto/iniciativa. Se usa únicamente el contexto personal visible de la sesión, también para administradores; consumir la estimación no termina una actividad.
+
+La fecha acordada del proyecto permanece en `TargetDate`. La fecha estimada es manual, opcional e independiente; se captura considerando trabajo pendiente, orden, disponibilidad y pruebas. Cada valor de fecha, incluido «Sin fecha», abre desde su texto un modal accesible con calendario nativo; al cerrar devuelve el foco al mismo control y conserva la iniciativa seleccionada. Ambas fechas pueden quedar vacías y cada guardado explícito modifica únicamente la fecha elegida, conservando la otra y las horas planeadas. La tarjeta resume estimada o, si falta, acordada. El detalle distingue ambas y muestra `+N días` únicamente cuando existen las dos y la estimada supera la acordada: viernes a lunes son tres días calendario. No hay predictor automático.
+
+El semáforo usa esta precedencia: fecha acordada de algún proyecto activo o fecha meta de iniciativa anterior a hoy → **Fecha incumplida**; si no, estimación posterior a la acordada de su proyecto o a la fecha meta de iniciativa → **En riesgo**; sin fecha acordada de proyecto ni fecha meta de iniciativa → **Sin fecha**; los demás casos → **En fecha**. Hoy todavía no es una fecha incumplida. Una estimación sola no crea un compromiso; los desvíos de proyectos no se suman en la iniciativa. Estas reglas de entregas se mantienen separadas del riesgo por capacidad compartida.
+
 Timeline general con iniciativas, sus proyectos, fechas meta, horas pendientes y línea de hoy. No inventar fechas de inicio obligatorias para actividades sin programar.
 
 ### Riesgo por capacidad compartida

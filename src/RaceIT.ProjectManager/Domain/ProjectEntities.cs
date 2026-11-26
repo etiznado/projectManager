@@ -76,6 +76,7 @@ public sealed class Project
     public Initiative? Initiative { get; set; }
     public string Name { get; set; } = "";
     public DateOnly? TargetDate { get; set; }
+    public DateOnly? EstimatedDate { get; set; }
     public int? PersonId { get; set; }
     public Person? Person { get; set; }
     public ICollection<Activity> Activities { get; set; } = new List<Activity>();

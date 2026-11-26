@@ -1,73 +1,141 @@
 @page "/initiatives"
 @attribute [Authorize]
 @implements IAsyncDisposable
-@inject PanoramaService Service
+@inject InitiativeDeliveryService Service
+@inject ProjectService Projects
 @inject IJSRuntime JS
 
 <PageTitle>Initiatives | RaceIT</PageTitle>
-<h1>Initiatives</h1>
-<div class="form-actions">
-    <button class="secondary" @onclick="Fullscreen">Pantalla completa ⛶</button>
-    <span class="muted">Actualizado @lastUpdate?.ToString("HH:mm:ss")</span>
-</div>
-@if (error is not null) { <p role="alert">@error</p> }
-
-@if (data is not null)
-{
-    <div class="metrics">
-        <div><span>Bolsa compartida</span><strong>@Format(data.WeeklyCapacityHours)/sem</strong></div>
-        <div><span>Pendientes</span><strong>@Format(data.TotalPending)</strong></div>
-        <div><span>Proyectos</span><strong>@data.ProjectCount</strong></div>
-        <div><span>En conflicto</span><strong>@data.InConflictCount</strong></div>
-    </div>
-
-    @if (data.Risk.SharedConflict)
-    {
-        <div class="banner">
-            <strong>En riesgo por carga compartida</strong>
-            <p>@Format(data.Risk.TotalPending) pendientes antes del @data.Risk.MaxDeadline?.ToString("dd MMM yyyy") frente a @Format(data.Risk.CapacityToMax) de referencia. Exceso de compromiso: @Format(data.Risk.ExcessHours).</p>
+<div class="initiative-workspace" @ref="workspace">
+    <header class="delivery-toolbar">
+        <h1 tabindex="-1">Initiatives <span class="initiative-count"><span aria-hidden="true">·</span> @initiatives.Count</span></h1>
+        <div class="delivery-actions">
+            @if (lastUpdate is not null) { <span class="updated">Actualizado @lastUpdate.Value.ToString("HH:mm:ss")</span> }
+            <button type="button" class="secondary fullscreen-toggle" data-fullscreen="false" aria-label="Entrar en pantalla completa" title="Entrar en pantalla completa" aria-pressed="false">
+                <svg class="fullscreen-expand" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6" /></svg>
+                <svg class="fullscreen-restore" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9h6V3M21 9h-6V3M9 21v-6H3M15 21v-6h6" /></svg>
+            </button>
         </div>
-    }
-
-    <section class="panel">
-        <h2>Iniciativas y proyectos</h2>
-        @if (data.Projects.Count == 0) { <p class="muted">Sin proyectos asignados.</p> }
-        @foreach (var group in groups)
+    </header>
+    @if (error is not null) { <p role="alert">@error</p><button class="secondary" @onclick="Refresh">Reintentar</button> }
+    @if (!loaded && error is null) { <p class="muted" role="status">Cargando iniciativas…</p> }
+    else if (loaded && initiatives.Count == 0) { <p class="empty-deliveries">Sin entregas en marcha en tus iniciativas.</p> }
+    else if (initiatives.Count > 0)
+    {
+        <div class="delivery-carousel" aria-label="Iniciativas">
+            <button class="carousel-arrow previous" aria-label="Ver iniciativas anteriores" @onclick="() => Scroll(-1)">‹</button>
+            <div class="initiative-track">
+                @foreach (var initiative in initiatives)
+                {
+                    <button @key="initiative.Id" id="initiative-@initiative.Id" class="initiative-card @(initiative.Id == selectedId ? "selected" : "")"
+                            aria-pressed="@(initiative.Id == selectedId ? "true" : "false")" aria-controls="initiative-detail" @onclick="() => Select(initiative.Id)">
+                        <span class="card-heading"><strong title="@initiative.Name">@initiative.Name</strong><span class="delivery-state @initiative.State.ToString().ToLowerInvariant()">@InitiativeDeliveryRules.Label(initiative.State)</span></span>
+                        <span class="card-projects @(initiative.Projects.Count == 1 ? "single" : "")">
+                            @foreach (var project in initiative.Projects)
+                            {
+                                <span class="card-project"><span title="@project.Name">@project.Name</span><span class="summary-date" aria-label="@(project.SummaryDate is null ? "Sin fecha" : "Fecha de entrega")">@ShortDate(project.SummaryDate)</span></span>
+                            }
+                        </span>
+                    </button>
+                }
+            </div>
+            <button class="carousel-arrow next" aria-label="Ver iniciativas siguientes" @onclick="() => Scroll(1)">›</button>
+        </div>
+        @if (Selected is DeliveryInitiative selected)
         {
-            <h3>@group.Key</h3>
-            @foreach (var project in group)
+            <span class="selection-link" aria-hidden="true"></span>
+            <section id="initiative-detail" class="initiative-detail @(selected.Projects.Count == 1 ? "single-project" : "")" aria-label="Proyectos de la iniciativa seleccionada">
+                @foreach (var project in selected.Projects)
+                {
+                    @ProjectContent(project)
+                }
+            </section>
+            @if (ReferenceProjects is { } reference)
             {
-                <p class="project-row">
-                    @project.Name
-                    <span class="muted">· @Format(project.PendingHours) pendientes @if (project.TargetDate is DateOnly d) { <text>· meta @d.ToString("dd/MM/yyyy")</text> }</span>
-                    @if (project.SharedConflict) { <span class="badge risk">Riesgo compartido</span> }
-                    else if (project.IndividuallyAtRisk) { <span class="badge risk">En riesgo</span> }
-                </p>
+                <section class="initiative-detail delivery-size-reference" aria-hidden="true" inert>
+                    @foreach (var project in reference)
+                    {
+                        @ProjectContent(project, measurement: true)
+                    }
+                </section>
             }
         }
-    </section>
-}
+    }
+    @if (editingProject is not null)
+    {
+        <div class="modal-backdrop" @onclick="CloseDate" @onkeydown="OnModalKeyDown">
+            <section class="modal forecast-dialog" role="dialog" aria-modal="true" aria-labelledby="forecast-title" @onclick:stopPropagation>
+                <div class="modal-head">
+                    <h2 id="forecast-title">@DateTitle · @editingProject.Name</h2>
+                    <button class="modal-close" aria-label="Cerrar fecha" disabled="@saving" @onclick="CloseDate">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p>@(editingField == DateField.Agreed ? "Fecha estimada" : "Fecha acordada"): <strong>@FullDate(editingField == DateField.Agreed ? editingProject.EstimatedDate : editingProject.AgreedDate)</strong></p>
+                    @if (editingField == DateField.Estimated) { <p class="muted">Considera el trabajo pendiente, su orden, la disponibilidad y las pruebas.</p> }
+                    @if (modalError is not null) { <p role="alert">@modalError</p> }
+                    <EditForm Model="dateInput" OnValidSubmit="SaveDate" FormName="delivery-date">
+                        <DataAnnotationsValidator /><ValidationSummary />
+                        <label>@DateTitle (opcional)<InputDate @bind-Value="dateInput.Date" class="calendar-date" disabled="@saving" /></label>
+                        <div class="form-actions">
+                            <button type="submit" disabled="@saving">@(saving ? "Guardando…" : "Guardar")</button>
+                            <button type="button" class="secondary" disabled="@saving" @onclick="CloseDate">Cancelar</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </section>
+        </div>
+    }
+</div>
 
 @code {
-    private PanoramaService.Panorama? data;
-    private string? error;
+    private IReadOnlyList<DeliveryInitiative> initiatives = [];
+    private int? selectedId;
+    private DeliveryInitiative? Selected => initiatives.FirstOrDefault(initiative => initiative.Id == selectedId);
+    private DeliveryProject? editingProject;
+    private DateInput dateInput = new();
+    private DateField editingField;
+    private string DateTitle => editingField == DateField.Agreed ? "Fecha acordada" : "Fecha estimada";
+    private IReadOnlyList<DeliveryProject>? ReferenceProjects => initiatives.FirstOrDefault(initiative => initiative.Projects.Count >= 2)?.Projects.Take(2).ToArray();
+    private string? error, modalError;
     private DateTime? lastUpdate;
+    private bool loaded, saving, disposed, focusModal, restoreFocus;
+    private string? returnControlId;
+    private ElementReference workspace;
     private readonly CancellationTokenSource stop = new();
+    private readonly SemaphoreSlim operations = new(1, 1);
     private Task? timerTask;
     private IJSObjectReference? module;
 
     protected override async Task OnInitializedAsync() => await Refresh();
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (disposed) return;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./initiative-deliveries.js");
+        await module.InvokeVoidAsync("update", workspace);
+        if (focusModal) { focusModal = false; await module.InvokeVoidAsync("openModal", workspace); }
+        if (restoreFocus) { restoreFocus = false; await module.InvokeVoidAsync("restoreFocus", workspace, returnControlId); }
         if (firstRender) timerTask = RunTimer();
-        return Task.CompletedTask;
     }
 
     private async Task Refresh()
     {
-        try { data = await Service.GetAsync(); lastUpdate = DateTime.Now; }
-        catch (Exception ex) { error = ex.Message; }
+        if (disposed || editingProject is not null || !await operations.WaitAsync(0, stop.Token)) return;
+        try { await ReadData(); }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (Exception) { if (!disposed) error = "No se pudieron actualizar las entregas. Se conservan los últimos datos disponibles."; }
+        finally { operations.Release(); }
+    }
+
+    private async Task ReadData()
+    {
+        var result = await Service.GetAsync(stop.Token);
+        if (disposed) return;
+        initiatives = result;
+        if (!initiatives.Any(initiative => initiative.Id == selectedId)) selectedId = initiatives.FirstOrDefault()?.Id;
+        loaded = true;
+        lastUpdate = DateTime.Now;
+        error = null;
     }
 
     private async Task RunTimer()
@@ -76,27 +144,94 @@
         try
         {
             while (await timer.WaitForNextTickAsync(stop.Token))
-                await InvokeAsync(async () => { await Refresh(); StateHasChanged(); });
+                await InvokeAsync(async () => { await Refresh(); if (!disposed) StateHasChanged(); });
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
     }
 
-    private async Task Fullscreen()
+    private void Select(int id) => selectedId = id;
+    private async Task Scroll(int direction) { if (module is not null) await module.InvokeVoidAsync("scroll", workspace, direction); }
+    private void OpenDate(DeliveryProject project, DateField field)
     {
-        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./display.js");
-        await module.InvokeVoidAsync("fullscreen");
+        editingProject = project;
+        editingField = field;
+        dateInput = new() { Date = field == DateField.Agreed ? project.AgreedDate : project.EstimatedDate };
+        modalError = null;
+        returnControlId = $"{(field == DateField.Agreed ? "agreed" : "estimate")}-{project.Id}";
+        focusModal = true;
+    }
+    private void CloseDate()
+    {
+        if (saving) return;
+        editingProject = null;
+        modalError = null;
+        restoreFocus = true;
+    }
+    private void OnModalKeyDown(KeyboardEventArgs args) { if (args.Key == "Escape") CloseDate(); }
+
+    private async Task SaveDate()
+    {
+        if (saving || editingProject is null || disposed) return;
+        saving = true;
+        modalError = null;
+        var acquired = false;
+        try
+        {
+            await operations.WaitAsync(stop.Token);
+            acquired = true;
+            if (editingField == DateField.Agreed)
+                await Projects.UpdateAgreedDateAsync(editingProject.Id, dateInput.Date, stop.Token);
+            else
+                await Projects.UpdateEstimatedDateAsync(editingProject.Id, dateInput.Date, stop.Token);
+            await ReadData();
+            editingProject = null;
+            restoreFocus = true;
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (UnauthorizedAccessException ex) { if (!disposed) modalError = ex.Message; }
+        catch (Exception) { if (!disposed) modalError = "No se pudo guardar o actualizar la fecha. Vuelve a intentarlo."; }
+        finally { if (acquired) operations.Release(); saving = false; }
     }
 
     public async ValueTask DisposeAsync()
     {
+        disposed = true;
         await stop.CancelAsync();
         if (timerTask is not null) await timerTask;
+        if (module is not null)
+        {
+            try { await module.InvokeVoidAsync("dispose", workspace); await module.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
         stop.Dispose();
-        if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
     }
 
-    private IEnumerable<IGrouping<string, PanoramaService.ProjectRow>> groups =>
-        data is null ? [] : data.Projects.GroupBy(p => p.InitiativeName ?? "Sin iniciativa");
+    private static string ShortDate(DateOnly? date) => date?.ToString("d MMM", System.Globalization.CultureInfo.GetCultureInfo("es-MX")) ?? "—";
+    private static string FullDate(DateOnly? date) => date?.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("es-MX")) ?? "Sin fecha";
+    private static string ActivityLabel(ActivityStatus status) => status switch { ActivityStatus.Completed => "Terminada", ActivityStatus.InProgress => "Iniciada", _ => "No iniciada" };
+    private enum DateField { Agreed, Estimated }
+    private sealed class DateInput { public DateOnly? Date { get; set; } }
 
-    private static string Format(decimal value) => value.ToString("0.##") + " h";
+    private RenderFragment ProjectContent(DeliveryProject project, bool measurement = false) => @<article class="delivery-project" @key="project.Id">
+        <div class="project-heading">
+            <h2>@project.Name</h2>
+            <div class="project-dates">
+                <span>Fecha acordada
+                    @if (measurement) { <span class="date-value">@FullDate(project.AgreedDate)</span> }
+                    else { <button type="button" id="agreed-@project.Id" class="date-value" aria-label="@($"Editar fecha acordada de {project.Name}")" aria-haspopup="dialog" @onclick="() => OpenDate(project, DateField.Agreed)">@FullDate(project.AgreedDate)</button> }
+                </span>
+                <span>Estimada
+                    @if (measurement) { <span class="date-value">@FullDate(project.EstimatedDate)</span> }
+                    else { <button type="button" id="estimate-@project.Id" class="date-value" aria-label="@($"Editar fecha estimada de {project.Name}")" aria-haspopup="dialog" @onclick="() => OpenDate(project, DateField.Estimated)">@FullDate(project.EstimatedDate)</button> }
+                </span>
+                @if (project.DelayDays is int days) { <span class="delivery-delay">+@days @(days == 1 ? "día" : "días")</span> }
+            </div>
+        </div>
+        <div class="delivery-activities" aria-label="Actividades">
+            @foreach (var activity in project.Activities)
+            {
+                <span class="delivery-activity @activity.Status.ToString().ToLowerInvariant()" title="@ActivityLabel(activity.Status)">@activity.Title<span class="activity-status"> · @ActivityLabel(activity.Status)</span></span>
+            }
+        </div>
+    </article>;
 }

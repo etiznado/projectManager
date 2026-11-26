@@ -21,7 +21,7 @@ public sealed class JarvisPlanningMigrationTests
         var assembly = db.GetService<IMigrationsAssembly>();
         const string previousId = "20261126001849_JarvisOpenFrontHistory";
         const string currentId = "20261126150236_JarvisPlanningHistory";
-        Assert.Equal(currentId, assembly.Migrations.Last().Key);
+        Assert.Contains(currentId, assembly.Migrations.Keys);
         var migration = assembly.CreateMigration(assembly.Migrations[currentId], "Microsoft.EntityFrameworkCore.SqlServer");
         AssertAdditionalSchema(migration.UpOperations);
         Assert.Equal(new[] { "JarvisPlanningChanges", "JarvisPlanningStates" }, migration.DownOperations.Select(operation => Assert.IsType<DropTableOperation>(operation).Name).Order());

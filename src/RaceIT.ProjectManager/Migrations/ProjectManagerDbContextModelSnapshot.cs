@@ -606,6 +606,9 @@ namespace RaceIT.ProjectManager.Migrations
 
             modelBuilder.Entity("RaceIT.ProjectManager.Domain.Project", b =>
                 {
+                    b.Property<DateOnly?>("EstimatedDate")
+                        .HasColumnType("date");
+
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
