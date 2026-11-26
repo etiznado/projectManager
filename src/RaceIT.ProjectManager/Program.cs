@@ -113,6 +113,7 @@ builder.Services.AddScoped<ActivityService>();
 builder.Services.AddScoped<WorkRecordService>();
 builder.Services.AddScoped<WeeklyPlanService>();
 builder.Services.AddScoped<PanoramaService>();
+builder.Services.AddScoped<InitiativeDeliveryService>();
 builder.Services.AddScoped<TemplateService>();
 builder.Services.AddScoped<OpenFrontService>();
 

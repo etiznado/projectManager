@@ -7,6 +7,36 @@ namespace RaceIT.ProjectManager.Services;
 
 public sealed class ProjectService(IDbContextFactory<ProjectManagerDbContext> factory, WorkAccess access)
 {
+    public async Task UpdateAgreedDateAsync(int projectId, DateOnly? agreedDate, CancellationToken cancellationToken = default)
+    {
+        var user = await access.UserAsync();
+        if (user.Identity?.IsAuthenticated != true)
+            throw new UnauthorizedAccessException("Inicia sesión para continuar.");
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var project = await db.Projects.SingleOrDefaultAsync(x => x.Id == projectId, cancellationToken)
+            ?? throw new ArgumentException("El proyecto no existe.");
+        if (!WorkAccess.CanEditProject(WorkAccess.IsAdmin(user), WorkAccess.PersonIdOf(user), project.PersonId))
+            throw new UnauthorizedAccessException("El proyecto no está asignado a ti.");
+        // An explicit commitment edit does not recalculate or replace the manual forecast.
+        project.TargetDate = agreedDate;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateEstimatedDateAsync(int projectId, DateOnly? estimatedDate, CancellationToken cancellationToken = default)
+    {
+        var user = await access.UserAsync();
+        if (user.Identity?.IsAuthenticated != true)
+            throw new UnauthorizedAccessException("Inicia sesión para continuar.");
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var project = await db.Projects.SingleOrDefaultAsync(x => x.Id == projectId, cancellationToken)
+            ?? throw new ArgumentException("El proyecto no existe.");
+        if (!WorkAccess.CanEditProject(WorkAccess.IsAdmin(user), WorkAccess.PersonIdOf(user), project.PersonId))
+            throw new UnauthorizedAccessException("El proyecto no está asignado a ti.");
+        // A forecast edit never writes the agreed date or any planning/effort values.
+        project.EstimatedDate = estimatedDate;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<List<Initiative>> ListInitiativesAsync()
     {
         await access.RequireAuthenticatedAsync();
