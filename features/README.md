@@ -4,6 +4,8 @@ Jarvis creates the issue in `Draft` with only the scope requested by Edgar. Edga
 
 ## Issue decisions and Codex evidence
 
+Repository-wide product rules, architecture and operating instructions live in [docs](../docs/README.md). Update only the durable documentation affected by a change; do not keep a parallel repository diary of feature status, phase results or execution logs.
+
 The supplied GitHub issue in this repository is the canonical record. Jarvis supplies its URL/number, exact approved scope revision, and Edgar's approval evidence when launching Codex; a direct Codex request must identify the same record. Confirm the repository, issue body, comments, approval, and labels. A label alone is not approval evidence. If the issue or approval is missing, inaccessible, locked, or ambiguous, report BLOCKED to Jarvis and leave the phase unclaimed. Codex must not create or select another issue or use local feature files as a fallback.
 
 The same publication rule applies to Jarvis-launched work and manually started Codex chats. Keep only these items on the issue:

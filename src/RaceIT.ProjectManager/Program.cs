@@ -90,6 +90,7 @@ if (googleEnabled)
 }
 builder.Services.AddAuthorization();
 builder.Services.AddJarvisConnector(builder.Configuration);
+builder.Services.AddJarvisPlanning(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<WorkAccess>();
@@ -158,6 +159,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapJarvisOpenFronts();
+app.MapJarvisPlanning();
 
 app.MapPost("/session/login", async (HttpContext context, IDbContextFactory<ProjectManagerDbContext> factory) =>
 {

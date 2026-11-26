@@ -23,10 +23,16 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
     public DbSet<AuthenticationAuditEvent> AuthenticationAuditEvents => Set<AuthenticationAuditEvent>();
     public DbSet<OpenFront> OpenFronts => Set<OpenFront>();
     public DbSet<OpenFrontChange> OpenFrontChanges => Set<OpenFrontChange>();
+    public DbSet<JarvisPlanningState> JarvisPlanningStates => Set<JarvisPlanningState>();
+    public DbSet<JarvisPlanningChange> JarvisPlanningChanges => Set<JarvisPlanningChange>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.Entity<PersonWorkday>().HasKey(x => new { x.PersonId, x.DayOfWeek });
+        model.Entity<JarvisPlanningState>().HasKey(x => new { x.EntityKind, x.EntityId });
+        model.Entity<JarvisPlanningState>().Property(x => x.Revision).IsConcurrencyToken();
+        model.Entity<JarvisPlanningChange>().HasIndex(x => new { x.EntityKind, x.EntityId, x.Revision }).IsUnique();
+        model.Entity<JarvisPlanningChange>().HasIndex(x => x.ApprovalId).IsUnique().HasFilter("[ApprovalId] IS NOT NULL");
         model.Entity<ActivityDependency>().HasKey(x => new { x.PredecessorId, x.SuccessorId });
         model.Entity<ActivityDependency>()
             .HasOne(x => x.Predecessor).WithMany(a => a.Outgoing).HasForeignKey(x => x.PredecessorId);
@@ -107,5 +113,10 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
         model.Entity<OpenFront>().Property(x => x.NextStep).HasMaxLength(2000);
         model.Entity<OpenFrontChange>().Property(x => x.OldValue).HasMaxLength(2000);
         model.Entity<OpenFrontChange>().Property(x => x.NewValue).HasMaxLength(2000);
+        model.Entity<JarvisPlanningState>().Property(x => x.LastAdvance).HasMaxLength(2000);
+        model.Entity<JarvisPlanningChange>().Property(x => x.PlanApprovalReference).HasMaxLength(2000);
+        model.Entity<JarvisPlanningChange>().Property(x => x.ApprovalReference).HasMaxLength(2000);
+        model.Entity<JarvisPlanningChange>().Property(x => x.OldValue).Metadata.SetMaxLength(null);
+        model.Entity<JarvisPlanningChange>().Property(x => x.NewValue).Metadata.SetMaxLength(null);
     }
 }

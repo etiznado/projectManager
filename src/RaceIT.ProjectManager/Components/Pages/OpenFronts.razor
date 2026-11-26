@@ -42,7 +42,6 @@
                 <article class="fronts-card @OpenFrontPresentation.StatusClass(front.Status)" @key="front.Id">
                     <div class="fronts-card-head">
                         <p class="fronts-context">@(front.Context ?? "Frente independiente")</p>
-                        <span class="fronts-status">@OpenFrontPresentation.Label(front.Status)</span>
                     </div>
                     <h2><span class="fronts-id">#@front.Id</span> · @front.Title</h2>
                     <div class="fronts-detail">
