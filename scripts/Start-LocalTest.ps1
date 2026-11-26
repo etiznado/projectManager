@@ -81,8 +81,14 @@ while ([DateTime]::UtcNow -lt $deadline) {
     $process.Refresh()
     if ($process.HasExited) { throw 'The local test application rejected startup; inspect the private logs.' }
     try {
-        $response = Invoke-WebRequest -Uri (([Uri]$runtime.UiUrl).AbsoluteUri.TrimEnd('/') + '/login') -UseBasicParsing -TimeoutSec 2
-        if ([int]$response.StatusCode -eq 200) { $ready = $true; break }
+        $loginUrl = ([Uri]$runtime.UiUrl).AbsoluteUri.TrimEnd('/') + '/login'
+        if (([Uri]$runtime.UiUrl).Scheme -eq 'https') {
+            $status = & curl.exe --silent --cacert $runtime.PublicCertificatePath --output NUL --write-out '%{http_code}' --max-time 2 $loginUrl
+            if ($LASTEXITCODE -eq 0 -and $status -eq '200') { $ready = $true; break }
+        } else {
+            $response = Invoke-WebRequest -Uri $loginUrl -UseBasicParsing -TimeoutSec 2
+            if ([int]$response.StatusCode -eq 200) { $ready = $true; break }
+        }
     } catch { }
     Start-Sleep -Milliseconds 200
 }

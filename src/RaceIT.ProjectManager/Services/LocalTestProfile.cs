@@ -16,6 +16,7 @@ public sealed class LocalTestProfile
     public const string CookieName = "RaceIT.LocalTest.Session";
     private const string Invalid = "El perfil local de prueba no está aprobado o no es válido.";
     private readonly LocalTestSettings settings;
+    private string? planningConfigurationPath;
     public Uri UiAddress { get; }
     public Uri ApiAddress { get; }
     public string ConnectionString => settings.ConnectionString;
@@ -40,7 +41,9 @@ public sealed class LocalTestProfile
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = false, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
             var runtime = JsonSerializer.Deserialize<LocalTestSettings>(File.ReadAllText(Path.Combine(directory, "runtime.json")), options);
             var approval = JsonSerializer.Deserialize<LocalTestSettings>(File.ReadAllText(Path.Combine(directory, "approval.json")), options);
-            return Validate(environment, runtime!, approval!, configuration);
+            var profile = Validate(environment, runtime!, approval!, configuration);
+            profile.planningConfigurationPath = Path.Combine(directory, "planning.json");
+            return profile;
         }
         catch (Exception) { throw new InvalidOperationException(Invalid); }
     }
@@ -71,9 +74,10 @@ public sealed class LocalTestProfile
                 throw new InvalidOperationException(Invalid);
             foreach (var path in new[] { runtime.PfxPath, runtime.PfxPasswordDpapiPath, runtime.PublicCertificatePath })
                 if (!Path.IsPathFullyQualified(path)) throw new InvalidOperationException(Invalid);
-            ValidateAddress(runtime.UiUrl, "http");
+            ValidateAddress(runtime.UiUrl, runtime.UiUrl == runtime.ApiUrl ? "https" : "http");
             ValidateAddress(runtime.ApiUrl, "https");
-            if (new Uri(runtime.UiUrl).Port == new Uri(runtime.ApiUrl).Port) throw new InvalidOperationException(Invalid);
+            if (runtime.UiUrl != runtime.ApiUrl && new Uri(runtime.UiUrl).Port == new Uri(runtime.ApiUrl).Port)
+                throw new InvalidOperationException(Invalid);
             var candidate = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Authentication:Jarvis:Enabled"] = "true", ["Authentication:Jarvis:ConnectorId"] = runtime.ConnectorId,
@@ -128,9 +132,18 @@ public sealed class LocalTestProfile
                 ["Authentication:Jarvis:TokenSha256"] = settings.TokenSha256,
                 ["Authentication:Jarvis:AllowAllOwnerFronts"] = settings.AllowAllOwnerFronts.ToString()
             }.Concat(settings.AllowedFrontIds.Select((id, index) => new KeyValuePair<string, string?>("Authentication:Jarvis:AllowedFrontIds:" + index, id.ToString()))));
+            if (planningConfigurationPath is not null && File.Exists(planningConfigurationPath))
+            {
+                // This operator file can configure only Planning, never the pinned target or credential.
+                var planning = new ConfigurationBuilder().AddJsonFile(planningConfigurationPath, optional: false, reloadOnChange: false).Build();
+                builder.Configuration.AddInMemoryCollection(planning.AsEnumerable()
+                    .Where(entry => entry.Value is not null)
+                    .Select(entry => new KeyValuePair<string, string?>("Authentication:Jarvis:Planning:" + entry.Key, entry.Value)));
+            }
             builder.WebHost.ConfigureKestrel(options =>
             {
-                options.Listen(IPAddress.Parse(UiAddress.Host), UiAddress.Port);
+                if (UiAddress != ApiAddress)
+                    options.Listen(IPAddress.Parse(UiAddress.Host), UiAddress.Port);
                 options.Listen(IPAddress.Parse(ApiAddress.Host), ApiAddress.Port, endpoint => endpoint.UseHttps(certificate));
             });
             builder.Logging.ClearProviders();
@@ -154,6 +167,11 @@ public sealed class LocalTestProfile
                 throw new InvalidOperationException(Invalid);
             _ = await db.OpenFrontChanges.AsNoTracking().Take(1).ToListAsync();
             _ = await db.OpenFronts.AsNoTracking().Where(x => x.PersonId == settings.PersonId).Take(1).ToListAsync();
+            if (services.GetRequiredService<JarvisPlanningAccess>().Enabled)
+            {
+                _ = await db.JarvisPlanningStates.AsNoTracking().Take(1).ToListAsync();
+                _ = await db.JarvisPlanningChanges.AsNoTracking().Take(1).ToListAsync();
+            }
             var certificate = services.GetRequiredService<X509Certificate2>();
             await File.WriteAllTextAsync(settings.PublicCertificatePath, certificate.ExportCertificatePem());
         }

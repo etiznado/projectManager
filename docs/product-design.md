@@ -1,8 +1,8 @@
-# Project Manager — Resumen del MVP para implementación
+# Diseño funcional de Project Manager
 
-20 de octubre de 2026. Documento de diseño consolidado; no implica que estas funciones ya existan. Sustituye las propuestas anteriores cuando hubo cambios. La sesión no incluyó implementación.
+Acuerdos funcionales del MVP de RaceIT, consolidados desde el diseño del 20 de octubre de 2026 y sus acuerdos posteriores. Este documento conserva las reglas del producto; no certifica implementación, pruebas ni aprobaciones de una feature. Para eso se consulta su issue, el código y la evidencia de Codex según el [índice de documentación](README.md).
 
-Acuerdo posterior (2026-10-22): se aplaza el uso de dependencias al crear actividades. El formulario de creación solo captura título, proyecto opcional, responsable cuando aplica y estimación. Las referencias a dependencias de este diseño quedan como contexto histórico para una posible etapa futura.
+El formulario de creación de actividades no captura dependencias: solo título, proyecto opcional, responsable cuando aplica y estimación. El modelo conserva dependencias; su uso por la API privada se describe en el [contrato de planificación de Jarvis](jarvis-planning-api.md), con los límites aprobados en su issue.
 
 Acuerdo posterior (2026-10-23): en Administración, el formulario de Personas incluye la jornada diaria editable de lunes a domingo al crear y editar. Cambiar la bolsa semanal de referencia no ajusta las horas diarias; la suma de la jornada puede diferir de la bolsa.
 
@@ -10,14 +10,14 @@ Acuerdo posterior (2026-10-23): en Administración, el formulario de Personas in
 
 Aplicación para mostrar en una TV de 32 pulgadas el estado de iniciativas y proyectos y el plan semanal del empleado, con avance real y alertas de riesgo. El administrador y el empleado deben poder entender cómo va el trabajo.
 
-Existe, según el usuario, una aplicación funcional en Blazor con .NET 10 y conexión a SQL en su computadora. Ese código no se revisó aquí. Antes de modificarlo, contrastarlo con este documento. Construir por etapas pequeñas y validar en uso real.
+La interfaz y la interacción son en español. La referencia de TV es de 32 pulgadas Full HD (1920 × 1080); la administración se realiza desde computadora. La estructura técnica se describe en [arquitectura](architecture.md). Los acuerdos funcionales deben contrastarse con el código antes de implementar cambios.
 
 ## Estructura del trabajo
 
 - Iniciativa → proyecto → actividad.
 - Un proyecto puede pertenecer a una iniciativa o ser independiente.
 - Una actividad puede pertenecer a un proyecto o ser una tarea suelta.
-- Crear una actividad no exige fechas de inicio y fin: se registra su esfuerzo estimado y sus dependencias antes de programarla.
+- Crear una actividad no exige fechas de inicio y fin: se registra su esfuerzo estimado antes de programarla. Una dependencia relaciona actividades existentes y no las duplica.
 - Proyectos e iniciativas tienen fechas meta cuando corresponda. Una entrega a cinco semanas no significa cinco semanas continuas de trabajo.
 - Las dependencias entre actividades representan también relaciones entre proyectos. No se acordó agregar otro mecanismo independiente de dependencias entre proyectos.
 
@@ -36,7 +36,7 @@ Ejemplos: Data Logger agrupa PCB, case interno, case externo y selección de bat
 
 Una actividad de 12 h puede recibir solo 4 h de trabajo planeado esta semana. El resto sigue pendiente.
 
-Si una actividad estimada en 10 h ya consumió 4 h y ahora faltan 9 h, se cambia su estimación total a 13 h. El proyecto actualiza sus totales y el cálculo de riesgo. Los registros se suman por proyecto e iniciativa sin duplicarlos.
+Si una actividad estimada en 10 h ya consumió 4 h y ahora faltan 9 h, la estimación actual sería 13 h. Reestimar no equivale a modificar el plan original; las operaciones permitidas dependen de cada interfaz. La API privada no permite editar horas de actividades o bloques existentes. Los registros se suman por proyecto e iniciativa sin duplicarlos.
 
 **Regla crítica:** consumir las horas estimadas no termina automáticamente una actividad ni demuestra el mismo porcentaje de avance. Si se agota la estimación y sigue abierta, señalar que se requiere revisar la estimación; no presentarla como resuelta. El tratamiento exacto del riesgo mientras falta reestimar requiere concretarse.
 
@@ -47,7 +47,7 @@ Si una actividad estimada en 10 h ya consumió 4 h y ahora faltan 9 h, se cambia
 | Semanal | Empleado: elige actividades, asigna horas y ordena bloques en Mi semana |
 | Por entregas | Usuario: controla iniciativas y proyectos por fechas meta y horas pendientes, sin calendario semanal obligatorio |
 
-El empleado tiene una sola disponibilidad de 45 h semanales compartida entre proyectos, tareas sueltas y operación. La distribución diaria determina el dibujo de los bloques. Lunes a sábado con 7.5 h diarias es un ejemplo visual, no una jornada definitiva confirmada.
+La referencia inicial confirmada es de 45 h semanales compartidas entre proyectos, tareas sueltas y operación: 8 h de lunes a viernes, 5 h el sábado y 0 h el domingo. Administración permite editar los siete días y la bolsa semanal de forma independiente; cambiar la bolsa conserva las horas diarias, cuya suma puede diferir de ella. La distribución diaria determina el dibujo de los bloques.
 
 Para el usuario, una sola bolsa de horas semanales de referencia cubre TODO su trabajo. Decide cómo repartirla. No se calcula desde el ritmo histórico, porque su dedicación varía mucho, ni exige una jornada fija.
 
@@ -85,9 +85,9 @@ La forma de planear es independiente del rol y usa los mismos proyectos, activid
 - Colapsada: barras con horas y el título que quepa, truncado con puntos suspensivos.
 - Con ambos paneles colapsados, el calendario aprovecha prácticamente todo el ancho.
 
-### Detalle inferior
+### Detalle en modal
 
-Hacer clic en una fila o en su barra selecciona la misma actividad y abre su detalle abajo: título completo, proyecto, estado, estimación, horas registradas y pendientes; controles para iniciar, pausar, reanudar, registrar tiempo y completar según corresponda.
+Hacer clic en una fila o en su barra selecciona la misma actividad y abre su detalle en un modal: título completo, proyecto, estado, estimación, horas registradas y pendientes; controles para iniciar, pausar, reanudar, registrar tiempo y completar según corresponda. La edición de horas del bloque vive en este modal, con máximo igual a las horas pendientes. Cerrar con la ✕, clic en el fondo o Escape conserva el contexto seleccionado y actualiza la lista al guardar.
 
 Es el detalle de la actividad seleccionada, no una lista de actividades terminadas.
 
@@ -95,7 +95,7 @@ Es el detalle de la actividad seleccionada, no una lista de actividades terminad
 
 - Iniciar guarda el inicio real de una sesión; pausar la cierra y reanudar abre otra.
 - Permitir registrar y corregir tiempo manualmente para reducir fricción y reparar olvidos.
-- Se propuso un solo contador activo por persona; iniciar otra actividad pausa el anterior.
+- Un solo contador activo por persona; iniciar otra actividad pausa el anterior.
 - Marcar terminada es una acción separada.
 - La espera de una impresión 3D no suma automáticamente horas humanas. Se puede trabajar en otra actividad mientras tanto.
 - Empezar a las 11 en vez de las 9 no basta para declarar atraso: revisar su efecto sobre los compromisos y la disponibilidad restante.
@@ -156,7 +156,7 @@ Sin registro público: el administrador crea las cuentas. No hay un rol distinto
 
 Se propuso un responsable por proyecto y por actividad, inicialmente quien los crea, con reasignación por el administrador. No se diseñaron múltiples responsables. Concretar la visibilidad del contexto cuando solo se asigna una actividad de un proyecto ajeno; no abrir otros proyectos privados por defecto.
 
-El proveedor de identidad, inicio de sesión y recuperación de contraseña no se eligieron. La definición de roles no equivale a tener implementada la autenticación.
+La autenticación Google, las invitaciones y el selector exclusivo de prueba se describen en [arquitectura](architecture.md#identidad-y-permisos). La definición de roles no acredita que una instancia tenga credenciales configuradas o autorización de producción.
 
 ## Conceptos de datos para revisar
 
@@ -183,7 +183,7 @@ Las fechas de los bloques se calculan con orden, horas y jornada; los registros 
 - Contabilidad definitiva entre continuaciones y su efecto en el riesgo.
 - Motor avanzado de reprogramación, dependencias y esperas.
 - Fechas relativas automáticas para plantillas de carreras.
-- Tolerancias exactas de desfase y detalles de autenticación, por concretar durante el diseño técnico.
+- Tolerancias exactas de desfase, por concretar dentro de un alcance aprobado.
 
 ## Validación funcional y entrega incremental
 
@@ -193,6 +193,10 @@ Revisar primero el código existente, identificar lo que ya funciona y lo que me
 
 ## Renders de referencia
 
-Los PNG de entrega ilustran el panorama personal y Mi semana con paneles expandidos y colapsados. Sus datos son ejemplos, no compromisos reales del usuario. Los estados, controles y reglas escritos en este documento son la referencia funcional; los renders no sustituyen las reglas de cálculo ni garantizan medidas exactas de las barras.
+Los PNG originales ilustran el panorama personal y Mi semana con paneles expandidos y colapsados. Sus datos son ejemplos, no compromisos reales del usuario. Los estados, controles y reglas escritos en este documento son la referencia funcional; los renders no sustituyen las reglas de cálculo ni garantizan medidas exactas de las barras.
+
+- [Iniciativas](design-references/01_Dashboard_Iniciativas.png).
+- [Mi semana expandida](design-references/02_Mi_Semana_Expandido.png).
+- [Mi semana colapsada](design-references/03_Mi_Semana_Colapsado.png).
 
 Acuerdo posterior (2026-10-20): jornada de referencia confirmada de 45 h: lunes a viernes 8 h, sábado 5 h, domingo 0 h. Reemplaza el ejemplo de 7.5 h por día; el acuerdo del 2026-10-23 permite editarla sin vincularla automáticamente a la bolsa semanal.

@@ -2,7 +2,7 @@
 
 ## Before changing anything
 
-- Start with [memory-bank/README.md](memory-bank/README.md). Read the current design, the active context, and the progress notes; consult the patterns and the technical context as the task requires.
+- Start with [docs/README.md](docs/README.md). Read the relevant product design, architecture, development and API documentation. Use the supplied issue for feature scope and acceptance criteria, and Codex/authorized PR artifacts for detailed handoffs and verification; do not maintain a separate feature-status diary in the repository.
 - Cross-check the documentation against the code, the tests, and, where applicable, the migrations. Distinguish what is implemented, what is tested, and what is pending. Do not start pending work unless the user asks for it.
 - Keep the repository conventions: namespace `RaceIT.ProjectManager`; .NET 10, Blazor Interactive Server, EF Core, and SQL Server.
 - Preserve the original plan and do not edit the activities' original planned hours. Distinguish working hours, 24-hour waits, and manual dates; do not confuse plan with forecast. Edit activities in a modal, keep the selected context, and refresh the list when it closes.
@@ -17,9 +17,9 @@ dotnet test RaceIT.ProjectManager.sln
 ```
 
 - The solution's tests do not require SQL Server. In Codex Cloud, use build and tests without assuming the local Windows instance exists.
-- The app and the local SQL integration use SQL Server Express on Windows. Do not start the app against an existing database without checking the target: in Development it may seed data.
-- Do not create or apply migrations, or delete, recreate, or change databases or data, without explicit authorization. The SQL steps in the technical context are for manual execution.
-- When a material change is finished, update only the affected notes (usually `activeContext.md` and `progress.md`), preserve the history, and report what you verified. Do not store credentials or replace the user's data with sample data.
+- The app and the local SQL integration use SQL Server Express on Windows. Check the target and startup/migration behavior before starting against an existing database. Preserve any instance currently used for testing unless its restart or modification is authorized.
+- Do not create or apply migrations, or delete, recreate, or change databases or data, without explicit authorization. Follow [docs/development.md](docs/development.md) and [docs/local-test.md](docs/local-test.md); example commands do not authorize SQL operations.
+- When a material change affects durable behavior or operation, update only the relevant documentation in `docs/` and report what you verified. Keep feature status, approvals and the final summary on the issue under the publication rules below; keep detailed execution evidence in Codex or an authorized PR. Do not create context/progress diaries, store credentials or replace the user's data with sample data. Preserve historical feature records and Git history.
 
 ## Feature flow
 

@@ -2,11 +2,11 @@
 
 Extensión de la misma aplicación y autenticación Bearer HTTPS de [Frentes abiertos](jarvis-open-fronts-api.md), aprobada en [FEAT-019, issue #23](https://github.com/etiznado/projectManager/issues/23). Agrega iniciativas, proyectos y actividades propios. No cambia `/api/jarvis/v1/fronts`, sus permisos ni su contrato.
 
-## Estado y requisito de esquema
+## Requisito de esquema y activación
 
-Implementación y pruebas HTTP con SQLite sintético en memoria; no se ha activado esta extensión ni se ha conectado producción. El modelo incorpora exclusivamente las tablas auxiliares `JarvisPlanningStates` y `JarvisPlanningChanges`; las entidades de planificación existentes siguen siendo la fuente de sus campos originales. **La migración y el snapshot no se han creado ni aplicado: requieren autorización separada.** No habilitar `Planning` en una instancia SQL Server antes de preparar, revisar y aplicar ese esquema en un destino expresamente autorizado y verificarlo. No hay migración, atribución masiva de propietarios ni semilla automática.
+El modelo incorpora exclusivamente las tablas auxiliares `JarvisPlanningStates` y `JarvisPlanningChanges`; las entidades de planificación existentes siguen siendo la fuente de sus campos originales. La migración `20261126150236_JarvisPlanningHistory` y su snapshot definen ese esquema adicional. Antes de habilitar la extensión, el operador debe comprobar el destino, obtener autorización para aplicar el esquema y verificar que ambas tablas estén disponibles. Una autorización para el fixture sintético local no permite intervenir otras bases ni producción. No hay migración, atribución masiva de propietarios ni semilla automática al arrancar.
 
-Las pruebas aisladas no acreditan integración ni concurrencia de SQL Server. No se ha cambiado el perfil operativo privado, credencial, certificado ni proceso local. La extensión permanece cerrada cuando se omite su configuración; las rutas anteriores de Frentes abiertos siguen usando su configuración previa.
+El [perfil local privado](local-test.md) permite compartir un puerto HTTPS entre aplicación y API y carga la configuración de planificación del operador sin reemplazar la credencial ni los parámetros fijados del entorno. Su preflight rechaza la falta de las tablas requeridas cuando la extensión está habilitada; no crea ni repara la base. La extensión permanece cerrada cuando se omite su habilitación; las rutas de Frentes abiertos siguen usando su configuración propia. La verificación de SQL Server, la activación operativa y sus autorizaciones se registran en el issue y la evidencia de Codex o del PR, sin inferirlas de pruebas aisladas.
 
 ## Autorización del operador
 
@@ -106,7 +106,7 @@ La API comprueba entidad, operación, propietario, plan, revisión, fingerprint 
 
 ## Consistencia, historial y errores
 
-Las lecturas/escrituras de esta extensión usan una transacción serializable que lee propiedad, jerarquía, grafo de dependencias, sesiones y metadatos antes de comprobar permisos y precondiciones. La implementación actual carga ese grafo completo; prioriza consistencia para el uso privado, sin reclamar escalabilidad verificada. Se conserva el bloqueo de esas lecturas hasta confirmar, y la revisión auxiliar tiene control de concurrencia optimista adicional. En SQL Server un deadlock puede hacer fallar una solicitud: no se informa éxito parcial. La concurrencia real de ese proveedor está pendiente de la validación autorizada.
+Las lecturas/escrituras de esta extensión usan una transacción serializable que lee propiedad, jerarquía, grafo de dependencias, sesiones y metadatos antes de comprobar permisos y precondiciones. La implementación actual carga ese grafo completo; prioriza consistencia para el uso privado, sin reclamar escalabilidad verificada. Se conserva el bloqueo de esas lecturas hasta confirmar, y la revisión auxiliar tiene control de concurrencia optimista adicional. En SQL Server un deadlock puede hacer fallar una solicitud: no se informa éxito parcial. La concurrencia de ese proveedor debe verificarse en un destino expresamente autorizado antes del uso operativo.
 
 El fingerprint SHA-256 canónico incluye los campos vigentes, relaciones, dependencias ordenadas, metadatos y sesiones abiertas del elemento, además de un hash del contexto de ancestros y descendientes. Una edición interactiva relevante invalida la precondición aunque no haya incrementado la revisión auxiliar. La API nunca serializa navegaciones EF en sus DTOs.
 
