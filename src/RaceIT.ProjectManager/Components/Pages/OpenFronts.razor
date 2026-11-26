@@ -1,6 +1,7 @@
 @page "/frentes-abiertos"
 @attribute [Authorize]
 @layout OpenFrontsLayout
+@implements IAsyncDisposable
 @inject OpenFrontService Service
 @inject WorkAccess Access
 @inject ILogger<OpenFronts> Logger
@@ -10,6 +11,12 @@
 <main class="fronts-board" aria-label="Frentes abiertos">
     <header class="fronts-heading">
         <h1>Frentes abiertos</h1>
+        <div class="fronts-refresh" role="img" aria-label="Consulta automática cada 30 segundos" title="Consulta automática cada 30 segundos">
+            @if (refreshCycle > 0)
+            {
+                <span class="fronts-refresh-fill" @key="refreshCycle" style="animation-duration: @(OpenFrontRefreshController.Interval.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture))s"></span>
+            }
+        </div>
         <a class="fronts-return" href="/mi-semana">Volver a Project Manager</a>
     </header>
     @if (feedback is not null) { <p class="fronts-feedback" role="status">@feedback</p> }
@@ -37,7 +44,7 @@
                         <p class="fronts-context">@(front.Context ?? "Frente independiente")</p>
                         <span class="fronts-status">@OpenFrontPresentation.Label(front.Status)</span>
                     </div>
-                    <h2>@front.Title</h2>
+                    <h2><span class="fronts-id">#@front.Id</span> · @front.Title</h2>
                     <div class="fronts-detail">
                         <span class="fronts-detail-label">Último avance</span>
                         <p>@front.LastAdvance</p>
@@ -77,62 +84,118 @@
     private bool loading = true;
     private string? loadError;
     private string? feedback;
+    private OpenFrontRefreshController refresh = null!;
+    private long refreshCycle;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        refresh = new OpenFrontRefreshController(
+            async _ => await Service.ListAsync(await Access.UserAsync()),
+            ApplyBackgroundRefresh,
+            operation => InvokeAsync(operation),
+            exception => Logger.LogWarning(exception, "Unable to refresh personal fronts."),
+            scheduleTick: () => { refreshCycle++; StateHasChanged(); });
+        return LoadAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            refreshCycle++;
+            refresh.Start();
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    private void ApplyBackgroundRefresh(IReadOnlyList<OpenFront> fronts)
+    {
+        var previous = cards.ToDictionary(card => card.Front.Id);
+        cards = fronts.Select(front =>
+        {
+            if (!previous.TryGetValue(front.Id, out var card)) return new CardEdit(front);
+            card.Front = front;
+            // A successful read does not retry or silently clear a failed local write.
+            return card;
+        }).ToList();
+        loading = false;
+        loadError = null;
+        StateHasChanged();
+    }
 
     private async Task LoadAsync()
     {
-        loading = true;
-        loadError = null;
-        try { cards = (await Service.ListAsync(await Access.UserAsync())).Select(x => new CardEdit(x)).ToList(); }
-        catch (Exception ex)
+        await refresh.TryRunAsync(async token =>
         {
-            Logger.LogWarning(ex, "Unable to load personal fronts.");
-            cards = [];
-            loadError = "No se pudieron cargar tus frentes. Vuelve a intentarlo.";
-        }
-        finally { loading = false; }
+            loading = true;
+            loadError = null;
+            try
+            {
+                var fronts = await Service.ListAsync(await Access.UserAsync());
+                if (!token.IsCancellationRequested) cards = fronts.Select(x => new CardEdit(x)).ToList();
+            }
+            catch (Exception ex)
+            {
+                if (token.IsCancellationRequested) return;
+                Logger.LogWarning(ex, "Unable to load personal fronts.");
+                cards = [];
+                loadError = "No se pudieron cargar tus frentes. Vuelve a intentarlo.";
+            }
+            finally { if (!token.IsCancellationRequested) loading = false; }
+        });
     }
 
     private async Task SaveAsync(CardEdit card, OpenFrontStatus status)
     {
-        if (card.Saving || card.Conflict || status == card.Front.Status) return;
-        card.Saving = true;
-        card.Error = null;
-        feedback = null;
-        try
+        await refresh.TryRunAsync(async token =>
         {
-            var saved = await Service.ChangeStatusAsync(await Access.UserAsync(), card.Front.Id, status, card.Front.Revision);
-            card.Front = saved;
-        }
-        catch (OpenFrontConflictException ex) { card.Error = ex.Message; card.Conflict = true; }
-        catch (ArgumentException) { card.Error = "No se pudo aplicar ese estado. Vuelve a intentarlo."; }
-        catch (UnauthorizedAccessException) { card.Error = "No tienes acceso a este frente. Vuelve a iniciar sesión."; }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Unable to save front {FrontId}.", card.Front.Id);
-            card.Error = "No se pudo guardar el cambio. Vuelve a intentarlo.";
-        }
-        finally { card.Saving = false; }
+            if (!cards.Contains(card) || card.Saving || card.Conflict || status == card.Front.Status) return;
+            card.Saving = true;
+            card.Error = null;
+            feedback = null;
+            try
+            {
+                var saved = await Service.ChangeStatusAsync(await Access.UserAsync(), card.Front.Id, status, card.Front.Revision);
+                if (!token.IsCancellationRequested) card.Front = saved;
+            }
+            catch (OpenFrontConflictException ex) when (!token.IsCancellationRequested) { card.Error = ex.Message; card.Conflict = true; }
+            catch (ArgumentException) when (!token.IsCancellationRequested) { card.Error = "No se pudo aplicar ese estado. Vuelve a intentarlo."; }
+            catch (UnauthorizedAccessException) when (!token.IsCancellationRequested) { card.Error = "No tienes acceso a este frente. Vuelve a iniciar sesión."; }
+            catch (Exception ex)
+            {
+                if (token.IsCancellationRequested) return;
+                Logger.LogWarning(ex, "Unable to save front {FrontId}.", card.Front.Id);
+                card.Error = "No se pudo guardar el cambio. Vuelve a intentarlo.";
+            }
+            finally { if (!token.IsCancellationRequested) card.Saving = false; }
+        });
     }
 
     private async Task ReloadAsync(CardEdit card)
     {
-        if (card.Saving) return;
-        card.Saving = true;
-        try
+        await refresh.TryRunAsync(async token =>
         {
-            var fresh = (await Service.ListAsync(await Access.UserAsync())).SingleOrDefault(x => x.Id == card.Front.Id);
-            if (fresh is null) { cards.Remove(card); feedback = "El frente ya no está disponible."; }
-            else { card.Front = fresh; card.Error = null; card.Conflict = false; }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Unable to reload front {FrontId}.", card.Front.Id);
-            card.Error = "No se pudo recargar la ficha. Vuelve a intentarlo.";
-        }
-        finally { card.Saving = false; }
+            if (!cards.Contains(card) || card.Saving) return;
+            card.Saving = true;
+            try
+            {
+                var fresh = (await Service.ListAsync(await Access.UserAsync())).SingleOrDefault(x => x.Id == card.Front.Id);
+                if (token.IsCancellationRequested) return;
+                if (fresh is null) { cards.Remove(card); feedback = "El frente ya no está disponible."; }
+                else { card.Front = fresh; card.Error = null; card.Conflict = false; }
+            }
+            catch (Exception ex)
+            {
+                if (token.IsCancellationRequested) return;
+                Logger.LogWarning(ex, "Unable to reload front {FrontId}.", card.Front.Id);
+                card.Error = "No se pudo recargar la ficha. Vuelve a intentarlo.";
+            }
+            finally { if (!token.IsCancellationRequested) card.Saving = false; }
+        });
     }
+
+    public ValueTask DisposeAsync() => refresh?.DisposeAsync() ?? ValueTask.CompletedTask;
 
     private sealed class CardEdit(OpenFront front)
     {

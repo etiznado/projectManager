@@ -22,6 +22,7 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
     public DbSet<GoogleInvitation> GoogleInvitations => Set<GoogleInvitation>();
     public DbSet<AuthenticationAuditEvent> AuthenticationAuditEvents => Set<AuthenticationAuditEvent>();
     public DbSet<OpenFront> OpenFronts => Set<OpenFront>();
+    public DbSet<OpenFrontChange> OpenFrontChanges => Set<OpenFrontChange>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -43,6 +44,8 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
         model.Entity<GoogleInvitation>().HasIndex(x => x.TokenHash).IsUnique();
         model.Entity<OpenFront>().HasIndex(x => x.PersonId);
         model.Entity<OpenFront>().Property(x => x.Revision).IsConcurrencyToken();
+        model.Entity<OpenFrontChange>().HasIndex(x => new { x.OpenFrontId, x.Revision }).IsUnique();
+        model.Entity<OpenFrontChange>().HasOne(x => x.OpenFront).WithMany().HasForeignKey(x => x.OpenFrontId);
         model.Entity<OpenFront>().ToTable(t =>
         {
             t.HasCheckConstraint("CK_OpenFront_Status", "[Status] >= 0 AND [Status] <= 2");
@@ -102,5 +105,7 @@ public sealed class ProjectManagerDbContext(DbContextOptions<ProjectManagerDbCon
         model.Entity<GoogleInvitation>().Property(x => x.ExpectedSubject).HasMaxLength(255);
         model.Entity<OpenFront>().Property(x => x.LastAdvance).HasMaxLength(2000);
         model.Entity<OpenFront>().Property(x => x.NextStep).HasMaxLength(2000);
+        model.Entity<OpenFrontChange>().Property(x => x.OldValue).HasMaxLength(2000);
+        model.Entity<OpenFrontChange>().Property(x => x.NewValue).HasMaxLength(2000);
     }
 }
