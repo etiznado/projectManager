@@ -32,6 +32,14 @@ Mantener la misma salida entre build y test. No lanzar el segundo comando con bi
 
 Una edición exclusivamente documental puede verificarse con revisión de enlaces/referencias y `git diff --check`, sin compilar ni ejecutar pruebas de la aplicación. Si Edgar pide conservar una instancia de prueba, no reiniciarla ni modificar sus binarios, archivos servidos, configuración o datos. Un cambio Razor en fuente no se refleja en una instancia iniciada desde DLL hasta compilar y reiniciar; ambos pasos requieren respetar la autorización vigente.
 
+## Cambios únicamente visuales
+
+Aplicar por defecto la [vía abreviada de cambios visuales](../features/README.md#visual-only-fast-path) para ajustes de presentación de una UI existente: colores, tipografía, espaciado, bordes, dimensiones o barras de scroll, conservando el comportamiento. No repetir el ciclo de roles ni la suite completa de la solución, ni añadir pruebas que repliquen CSS.
+
+Revisar el diff, compilar el proyecto o sus assets cuando haga falta (por ejemplo, CSS aislado o Razor) y comprobar en navegador el resultado, los tamaños relevantes y las interacciones afectadas. Informar los checks realmente ejecutados y cualquier comprobación pendiente; los resultados anteriores no acreditan la nueva revisión. Cambios de acciones, eventos, validación, permisos, servicios o persistencia siguen el flujo normal.
+
+Se conserva la revisión UI requerida de Edgar. Las autorizaciones de datos, SQL, arranque/reinicio y publicación siguen vigentes; reutilizar las ya otorgadas para el mismo destino y operación.
+
 ## Base local y migraciones
 
 La conexión EF se recibe como `ConnectionStrings:ProjectManager`. Puede proceder de configuración de entorno o del perfil privado validado; comprobar siempre servidor y catálogo efectivos antes de conectar. No publicar cadenas con credenciales, tokens, certificados privados ni archivos de `.local-test/`.
