@@ -4,11 +4,15 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using RaceIT.ProjectManager.Components;
+using RaceIT.ProjectManager.Api;
 using RaceIT.ProjectManager.Data;
 using RaceIT.ProjectManager.Domain;
 using RaceIT.ProjectManager.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var localTestProfile = LocalTestProfile.Load(builder.Environment.EnvironmentName, builder.Configuration);
+localTestProfile?.Configure(builder);
+if (localTestProfile is not null) builder.Services.AddSingleton(localTestProfile);
 if (builder.Environment.IsEnvironment("PrivateQa"))
 {
     builder.WebHost.UseStaticWebAssets();
@@ -19,13 +23,13 @@ var googleEnabled = builder.Configuration.GetValue<bool>("Authentication:Google:
 var selectorEnabled = builder.Environment.IsEnvironment("PrivateQa") &&
     builder.Configuration.GetValue<bool>("Authentication:Selector:Enabled") &&
     builder.Configuration.GetValue<bool>("Authentication:Selector:SyntheticDataOnly") &&
-    AuthenticationGate.IsDedicatedQaDatabase(builder.Configuration.GetConnectionString("ProjectManager"));
+    (AuthenticationGate.IsDedicatedQaDatabase(builder.Configuration.GetConnectionString("ProjectManager")) || localTestProfile is not null);
 
 var authentication = builder.Services.AddAuthentication("Cookies").AddCookie("Cookies", options =>
 {
     options.LoginPath = "/login";
     options.AccessDeniedPath = "/mi-semana";
-    options.Cookie.Name = "RaceIT.Session";
+    options.Cookie.Name = localTestProfile is null ? "RaceIT.Session" : LocalTestProfile.CookieName;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.Events.OnValidatePrincipal = async context =>
     {
@@ -85,6 +89,7 @@ if (googleEnabled)
     });
 }
 builder.Services.AddAuthorization();
+builder.Services.AddJarvisConnector(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<WorkAccess>();
@@ -95,8 +100,11 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddDbContextFactory<ProjectManagerDbContext>(options =>
+{
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectManager")
-        ?? throw new InvalidOperationException("Falta la conexión ProjectManager.")));
+        ?? throw new InvalidOperationException("Falta la conexión ProjectManager."));
+    if (localTestProfile is not null) options.AddInterceptors(localTestProfile.ConnectionGuard());
+});
 
 builder.Services.AddScoped<PersonService>();
 builder.Services.AddScoped<ProjectService>();
@@ -108,6 +116,7 @@ builder.Services.AddScoped<TemplateService>();
 builder.Services.AddScoped<OpenFrontService>();
 
 var app = builder.Build();
+if (localTestProfile is not null) await localTestProfile.VerifyExistingSchemaAsync(app.Services);
 
 if (args.Contains("--issue-bootstrap-invitation"))
 {
@@ -126,14 +135,29 @@ if (args.Contains("--issue-bootstrap-invitation"))
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
+    if (localTestProfile is null) app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+if (localTestProfile is not null)
+{
+    app.Use(async (context, next) =>
+    {
+        if (context.Connection.RemoteIpAddress is not { } ip || !System.Net.IPAddress.IsLoopback(ip))
+        { context.Response.StatusCode = 403; return; }
+        await next(context);
+    });
+}
+// API errors retain JSON and status codes; bearer credentials are never redirected over HTTP.
+app.UseJarvisApiErrors();
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api/jarvis"), branch =>
+{
+    branch.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+    if (localTestProfile is null) branch.UseHttpsRedirection();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+app.MapJarvisOpenFronts();
 
 app.MapPost("/session/login", async (HttpContext context, IDbContextFactory<ProjectManagerDbContext> factory) =>
 {
@@ -213,11 +237,17 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.Run();
+using var localStopSignal = localTestProfile is null ? null : new EventWaitHandle(false, EventResetMode.ManualReset,
+    $"Local\\RaceIT.ProjectManager.LocalTest.{System.Environment.ProcessId}");
+var registeredStop = localStopSignal is null ? null : ThreadPool.RegisterWaitForSingleObject(localStopSignal,
+    (_, _) => app.Lifetime.StopApplication(), null, Timeout.Infinite, true);
+try { app.Run(); }
+finally { registeredStop?.Unregister(null); }
 
 static bool SelectorAllowed(HttpContext context, bool enabled) => enabled &&
     AuthenticationGate.SelectorEnabled(true, true, true, context.Connection.RemoteIpAddress,
-        context.RequestServices.GetRequiredService<IConfiguration>().GetConnectionString("ProjectManager"));
+        context.RequestServices.GetRequiredService<IConfiguration>().GetConnectionString("ProjectManager"),
+        context.RequestServices.GetService<LocalTestProfile>());
 
 static ClaimsPrincipal CreatePrincipal(Person person, string source) => new(new ClaimsIdentity(
     [new(ClaimTypes.NameIdentifier, $"person:{person.Id}"), new("PersonId", person.Id.ToString()),

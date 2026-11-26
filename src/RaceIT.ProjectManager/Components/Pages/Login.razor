@@ -5,6 +5,7 @@
 @inject IWebHostEnvironment Environment
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
+@inject IServiceProvider Services
 
 <PageTitle>Iniciar sesión | RaceIT</PageTitle>
 <section class="panel">
@@ -56,7 +57,7 @@
             Configuration.GetValue<bool>("Authentication:Selector:Enabled"),
             Configuration.GetValue<bool>("Authentication:Selector:SyntheticDataOnly"),
             HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress,
-            Configuration.GetConnectionString("ProjectManager"));
+            Configuration.GetConnectionString("ProjectManager"), Services.GetService<LocalTestProfile>());
         if (!selectorEnabled) return;
         try
         {

@@ -6,9 +6,11 @@ namespace RaceIT.ProjectManager.Services;
 public static class AuthenticationGate
 {
     public static bool SelectorEnabled(bool privateQaEnvironment, bool explicitlyEnabled, bool syntheticDataOnly,
-        IPAddress? remoteAddress, string? connectionString) =>
+        IPAddress? remoteAddress, string? connectionString, LocalTestProfile? localTestProfile = null) =>
         privateQaEnvironment && explicitlyEnabled && syntheticDataOnly && remoteAddress is not null &&
-        IPAddress.IsLoopback(remoteAddress) && IsDedicatedQaDatabase(connectionString);
+        IPAddress.IsLoopback(remoteAddress) && (IsDedicatedQaDatabase(connectionString) ||
+            localTestProfile is not null && string.Equals(connectionString, localTestProfile.ConnectionString, StringComparison.Ordinal) &&
+            localTestProfile.AllowsSelector(remoteAddress));
 
     public static bool IsDedicatedQaDatabase(string? connectionString)
     {

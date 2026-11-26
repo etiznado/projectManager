@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Explicit local test approval, verifier digest, TLS assets and process state.
+.local-test/
+
 # User-specific files
 *.rsuser
 *.suo
